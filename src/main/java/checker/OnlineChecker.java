@@ -13,12 +13,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
 
-public class OneOffChecker {
-    public static <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history) {
+public class OnlineChecker {
+    public static <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history, int firstIndex) {
         ArrayList<Violation> violations = new ArrayList<>();
         ArrayList<Transaction<KeyType, ValueType>> txns = history.getTransactions();
         HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyWritten = history.getKeyWritten();
-        for (Transaction<KeyType, ValueType> currentTxn : txns) {
+        for (int i = firstIndex; i < txns.size(); i++) {
+            Transaction<KeyType, ValueType> currentTxn = txns.get(i);
             int opSize = currentTxn.getOperations().size();
             HashMap<KeyType, ValueType> intKeys = new HashMap<>(opSize * 4 / 3 + 1);
             HashMap<KeyType, ValueType> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);

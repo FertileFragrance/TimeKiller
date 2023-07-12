@@ -23,7 +23,7 @@ public class JSONFileReader implements Reader<Long, Long> {
         ArrayList<Transaction<Long, Long>> txns = null;
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
-        long maxKey = 0L;
+        long maxKey = Long.MIN_VALUE;
         try {
             JSONReader jsonReader = new JSONReader(new FileReader(filepath));
             JSONArray jsonArray = (JSONArray) jsonReader.readObject();
@@ -47,7 +47,7 @@ public class JSONFileReader implements Reader<Long, Long> {
                     JSONObject jsonOperation = (JSONObject) objOp;
                     String type = jsonOperation.getString("t");
                     Long key = jsonOperation.getLong("k");
-                    maxKey = (maxKey >= key) ? maxKey : key;
+                    maxKey = Math.max(maxKey, key);
                     Long value = jsonOperation.getLong("v");
                     if ("w".equalsIgnoreCase(type) || "write".equalsIgnoreCase(type)) {
                         Operation<Long, Long> op = new Operation<>(OpType.write, key, value);
@@ -65,6 +65,7 @@ public class JSONFileReader implements Reader<Long, Long> {
                     violations.add(new SESSION<>(lastInSession.get(sid), txn, sid));
                 }
                 lastInSession.put(sid, txn);
+                txns.add(txn);
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
@@ -75,6 +76,11 @@ public class JSONFileReader implements Reader<Long, Long> {
         return Pair.of(new History<>(txns, initialTxnAndKeyWritten.getRight()), violations);
     }
 
+    @Override
+    public int obtainFirstIndexToCheck() {
+        return 0;
+    }
+
     private Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> createInitialTxn(long maxKey) {
         HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         String transactionId = "initial";
@@ -83,17 +89,16 @@ public class JSONFileReader implements Reader<Long, Long> {
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
         HybridLogicalClock startTimestamp = new HybridLogicalClock(0L, 0L);
         HybridLogicalClock commitTimestamp = new HybridLogicalClock(0L, 0L);
-        Transaction<Long, Long> transaction = new Transaction<>(transactionId, operations,
+        Transaction<Long, Long> initialTxn = new Transaction<>(transactionId, operations,
                 startTimestamp, commitTimestamp);
-        transaction.setExtWriteKeys(extWriteKeys);
+        initialTxn.setExtWriteKeys(extWriteKeys);
         for (long key = 0; key <= maxKey; key++) {
-            Operation<Long, Long> operation = new Operation<>(OpType.write, key, null);
-            operations.add(operation);
+            operations.add(new Operation<>(OpType.write, key, null));
             extWriteKeys.put(key, null);
             ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
-            writeToKeyTxns.add(transaction);
+            writeToKeyTxns.add(initialTxn);
             keyWritten.put(key, writeToKeyTxns);
         }
-        return Pair.of(transaction, keyWritten);
+        return Pair.of(initialTxn, keyWritten);
     }
 }

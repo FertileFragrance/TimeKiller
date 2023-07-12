@@ -7,5 +7,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.util.ArrayList;
 
 public interface Reader<KeyType, ValueType> {
-    Pair<History<KeyType, ValueType>, ArrayList<Violation>> read(String filepath);
+    Pair<History<KeyType, ValueType>, ArrayList<Violation>> read(String filepathOrJsonString);
+
+    int obtainFirstIndexToCheck();
 }
