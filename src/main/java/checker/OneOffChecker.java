@@ -11,6 +11,7 @@ import violation.Violation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Objects;
 
 public class OneOffChecker {
@@ -66,5 +67,27 @@ public class OneOffChecker {
             currentTxn.setExtWriteKeys(extWriteKeys);
         }
         return violations;
+    }
+
+    public static <KeyType, ValueType> void garbageCollect(History<KeyType, ValueType> history) {
+        ArrayList<Transaction<KeyType, ValueType>> txns = history.getTransactions();
+        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(txns.size() / 3 * 4 + 1);
+        remain.add(txns.get(0));
+        for (ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns : history.getKeyWritten().values()) {
+            remain.add(writeToKeyTxns.get(writeToKeyTxns.size() - 1));
+        }
+        for (ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns : history.getKeyWritten().values()) {
+            for (int j = 1; j < writeToKeyTxns.size() - 1; j++) {
+                Transaction<KeyType, ValueType> txn = writeToKeyTxns.get(j);
+                if (!remain.contains(txn)) {
+                    writeToKeyTxns.remove(j);
+                    j--;
+                    txns.remove(txn);
+                    txn = null;
+                }
+            }
+        }
+        remain = null;
+        System.gc();
     }
 }
