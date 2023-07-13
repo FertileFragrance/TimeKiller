@@ -30,6 +30,7 @@ public class OnlineReader implements Reader<Long, Long>{
         int size = jsonArray.size();
         if (history == null) {
             txns = new ArrayList<>(size + 1);
+            txns.add(new Transaction<>(null, null, null, null));
         } else {
             txns = history.getTransactions();
             firstIndex = txns.size();
