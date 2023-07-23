@@ -1,5 +1,6 @@
 package reader;
 
+import arg.Arg;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONArray;
@@ -65,7 +66,7 @@ public class OnlineReader implements Reader<Long, Long>{
                 }
             }
             Transaction<Long, Long> txn = new Transaction<>(txnId, ops, startTs, commitTs);
-            if (lastInSession.containsKey(sid) &&
+            if (Arg.ENABLE_SESSION && lastInSession.containsKey(sid) &&
                     lastInSession.get(sid).getCommitTimestamp().compareTo(txn.getStartTimestamp()) > 0) {
                 violations.add(new SESSION<>(lastInSession.get(sid), txn, sid));
             }

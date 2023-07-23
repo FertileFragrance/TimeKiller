@@ -10,6 +10,7 @@ import history.transaction.Operation;
 import history.transaction.Transaction;
 import violation.SESSION;
 import violation.Violation;
+import arg.Arg;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileNotFoundException;
@@ -60,7 +61,7 @@ public class JSONFileReader implements Reader<Long, Long> {
                     }
                 }
                 Transaction<Long, Long> txn = new Transaction<>(txnId, ops, startTs, commitTs);
-                if (lastInSession.containsKey(sid) &&
+                if (Arg.ENABLE_SESSION && lastInSession.containsKey(sid) &&
                         lastInSession.get(sid).getCommitTimestamp().compareTo(txn.getStartTimestamp()) > 0) {
                     violations.add(new SESSION<>(lastInSession.get(sid), txn, sid));
                 }
