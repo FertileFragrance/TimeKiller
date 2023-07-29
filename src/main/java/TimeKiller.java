@@ -55,7 +55,7 @@ public class TimeKiller {
     private static void setup(String[] args) {
         CommandLineParser parser = new DefaultParser();
         Options options = new Options();
-        options.addOption(Option.builder("h").longOpt("help").desc("usage help").build());
+        options.addOption(Option.builder("h").longOpt("help").desc("print usage help and exit").build());
         options.addOption(Option.builder().longOpt("history_path").required().hasArg(true)
                 .type(String.class).desc("the filepath of history in json format").build());
         options.addOption(Option.builder().longOpt("enable_session").hasArg(true)
