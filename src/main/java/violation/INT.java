@@ -16,6 +16,17 @@ public class INT<KeyType, ValueType> extends Violation {
         this.latterValue = latterValue;
     }
 
+    @Override
+    public String toString() {
+        String s1 = "Violation of INT is found ";
+        return s1 + "{" +
+                "txn=" + txn +
+                ", key=" + key +
+                ", formerValue=" + formerValue +
+                ", latterValue=" + latterValue +
+                '}';
+    }
+
     public Transaction<KeyType, ValueType> getTxn() {
         return txn;
     }

@@ -94,8 +94,8 @@ public class JSONFileReader implements Reader<Long, Long> {
                 startTimestamp, commitTimestamp);
         initialTxn.setExtWriteKeys(extWriteKeys);
         for (long key = 0; key <= maxKey; key++) {
-            operations.add(new Operation<>(OpType.write, key, null));
-            extWriteKeys.put(key, null);
+            operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
+            extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
             ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
             writeToKeyTxns.add(initialTxn);
             keyWritten.put(key, writeToKeyTxns);

@@ -60,11 +60,11 @@ public class Transaction<KeyType, ValueType> {
 
     @Override
     public String toString() {
-        return "Transaction{" +
-                "transactionId='" + transactionId + '\'' +
-                ", operations=" + operations +
-                ", startTimestamp=" + startTimestamp +
-                ", commitTimestamp=" + commitTimestamp +
+        return "{" +
+                "id=" + transactionId +
+                ", ops=" + operations +
+                ", startTs=" + startTimestamp +
+                ", commitTS=" + commitTimestamp +
                 '}';
     }
 }

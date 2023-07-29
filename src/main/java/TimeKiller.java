@@ -18,12 +18,17 @@ public class TimeKiller {
         long start = System.currentTimeMillis();
         setup(args);
 
-        String filepath = commandLine.getOptionValue("historyPath");
-        System.out.println("Checking " + filepath);
-        Arg.ENABLE_SESSION = Boolean.parseBoolean(commandLine.getOptionValue("enableSession", "true"));
-        decideReader(filepath);
+        Arg.FILEPATH = commandLine.getOptionValue("history_path");
+        System.out.println("Checking " + Arg.FILEPATH);
+        Arg.ENABLE_SESSION = Boolean.parseBoolean(commandLine.getOptionValue("enable_session", "true"));
+        decideReader(Arg.FILEPATH);
 
-        Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(filepath);
+        Arg.INITIAL_VALUE = commandLine.getOptionValue("initial_value", null);
+        if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
+            Arg.INITIAL_VALUE_LONG = Long.parseLong(Arg.INITIAL_VALUE);
+        }
+
+        Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(Arg.FILEPATH);
         History<?, ?> history = historyAndViolations.getLeft();
         ArrayList<Violation> sessionViolations = historyAndViolations.getRight();
 
@@ -51,15 +56,22 @@ public class TimeKiller {
         CommandLineParser parser = new DefaultParser();
         Options options = new Options();
         options.addOption(Option.builder("h").longOpt("help").desc("usage help").build());
-        options.addOption(Option.builder("historyPath").required().hasArg(true)
-                .type(String.class).desc("the filepath of execution history").build());
-        options.addOption(Option.builder("enableSession").hasArg(true)
-                .type(Boolean.class).desc("whether to check the SESSION axiom").build());
+        options.addOption(Option.builder().longOpt("history_path").required().hasArg(true)
+                .type(String.class).desc("the filepath of history in json format").build());
+        options.addOption(Option.builder().longOpt("enable_session").hasArg(true)
+                .type(Boolean.class).desc("whether to check the SESSION axiom [default: true]").build());
+        options.addOption(Option.builder().longOpt("initial_value").hasArg(true)
+                .type(Long.class).desc("the initial value of keys before all writes [default: null]").build());
         try {
             commandLine = parser.parse(options, args);
+            if (commandLine.hasOption("h")) {
+                HelpFormatter hf = new HelpFormatter();
+                hf.printHelp(92, "TimeKiller", null, options, null, true);
+                System.exit(0);
+            }
         } catch (ParseException e) {
             HelpFormatter hf = new HelpFormatter();
-            hf.printHelp("TimeKiller", options, true);
+            hf.printHelp(92, "TimeKiller", null, options, null, true);
             System.exit(1);
         }
     }

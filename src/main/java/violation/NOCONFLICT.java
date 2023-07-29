@@ -15,6 +15,22 @@ public class NOCONFLICT<KeyType, ValueType> extends Violation {
         this.key = key;
     }
 
+    @Override
+    public String toString() {
+        String s1 = "Violation of NOCONFLICT is found ";
+        String s2;
+        if ("initial".equals(formerTxn.getTransactionId())) {
+            s2 = "{id=initial, ops=[w(" + key + ", null)], startTs=HLC(0, 0), commitTs=HLC(0, 0)}";
+        } else {
+            s2 = formerTxn.toString();
+        }
+        return s1 + "{" +
+                "formerTxn=" + s2 +
+                ", latterTxn=" + latterTxn +
+                ", key=" + key +
+                '}';
+    }
+
     public Transaction<KeyType, ValueType> getFormerTxn() {
         return formerTxn;
     }

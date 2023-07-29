@@ -128,8 +128,8 @@ public class OnlineReader implements Reader<Long, Long>{
         ArrayList<Operation<Long, Long>> operations = initialTxn.getOperations();
         HashMap<Long, Long> extWriteKeys = initialTxn.getExtWriteKeys();
         for (long key = lastMaxKey + 1; key <= maxKey; key++) {
-            operations.add(new Operation<>(OpType.write, key, null));
-            extWriteKeys.put(key, null);
+            operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
+            extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
             ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
             writeToKeyTxns.add(initialTxn);
             keyWritten.put(key, writeToKeyTxns);

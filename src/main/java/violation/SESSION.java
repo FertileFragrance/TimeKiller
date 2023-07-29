@@ -15,6 +15,16 @@ public class SESSION<KeyType, ValueType> extends Violation {
         this.sessionId = sessionId;
     }
 
+    @Override
+    public String toString() {
+        String s1 = "Violation of SESSION is found ";
+        return s1 + "{" +
+                "formerTxn=" + formerTxn +
+                ", latterTxn=" + latterTxn +
+                ", sessionId=" + sessionId +
+                '}';
+    }
+
     public Transaction<KeyType, ValueType> getFormerTxn() {
         return formerTxn;
     }
