@@ -87,7 +87,7 @@ public class OnlineReader implements Reader<Long, Long>{
         if (history == null) {
             Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> initialTxnAndKeyWritten = createInitialTxn();
             txns.set(0, initialTxnAndKeyWritten.getLeft());
-            history = new History<>(txns, initialTxnAndKeyWritten.getRight());
+            history = new History<>(txns, null, initialTxnAndKeyWritten.getRight());
         } else {
             updateInitialTxn(lastMaxKey, txns.get(0));
         }

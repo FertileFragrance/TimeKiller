@@ -18,7 +18,7 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class JSONFileReader implements Reader<Long, Long> {
+public class JSONFileFastReader implements Reader<Long, Long> {
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(String filepath) {
         ArrayList<Transaction<Long, Long>> txns = null;
@@ -74,7 +74,7 @@ public class JSONFileReader implements Reader<Long, Long> {
         assert txns != null;
         Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> initialTxnAndKeyWritten = createInitialTxn(maxKey);
         txns.set(0, initialTxnAndKeyWritten.getLeft());
-        return Pair.of(new History<>(txns, initialTxnAndKeyWritten.getRight()), violations);
+        return Pair.of(new History<>(txns, null, initialTxnAndKeyWritten.getRight()), violations);
     }
 
     @Override

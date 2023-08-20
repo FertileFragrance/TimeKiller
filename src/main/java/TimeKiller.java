@@ -1,32 +1,27 @@
 import arg.Arg;
-import checker.OneOffChecker;
+import checker.Checker;
+import checker.FastChecker;
+import checker.GcChecker;
 import history.History;
+import reader.JSONFileGcReader;
 import violation.Violation;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.tuple.Pair;
-import reader.JSONFileReader;
+import reader.JSONFileFastReader;
 import reader.Reader;
 
 import java.io.File;
 import java.util.ArrayList;
 
 public class TimeKiller {
-    private static CommandLine commandLine;
     private static Reader<?, ?> reader;
+    private static Checker checker;
 
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
         setup(args);
 
-        Arg.FILEPATH = commandLine.getOptionValue("history_path");
-        System.out.println("Checking " + Arg.FILEPATH);
-        Arg.ENABLE_SESSION = Boolean.parseBoolean(commandLine.getOptionValue("enable_session", "true"));
-        decideReader();
-
-        Arg.INITIAL_VALUE = commandLine.getOptionValue("initial_value", null);
-        if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
-            Arg.INITIAL_VALUE_LONG = Long.parseLong(Arg.INITIAL_VALUE);
-        }
+        decideReaderAndChecker();
 
         Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(Arg.FILEPATH);
         History<?, ?> history = historyAndViolations.getLeft();
@@ -45,7 +40,7 @@ public class TimeKiller {
                 System.out.println("Satisfy SESSION");
             }
         }
-        ArrayList<Violation> violations = OneOffChecker.check(history);
+        ArrayList<Violation> violations = checker.check(history);
         if (violations.size() > 0) {
             System.out.println("Do NOT satisfy SI");
             violations.forEach(System.out::println);
@@ -72,30 +67,52 @@ public class TimeKiller {
                 .type(Boolean.class).desc("whether to check the SESSION axiom [default: true]").build());
         options.addOption(Option.builder().longOpt("initial_value").hasArg(true)
                 .type(Long.class).desc("the initial value of keys before all writes [default: null]").build());
+        options.addOption(Option.builder().longOpt("mode").hasArg(true).type(String.class)
+                .desc("choose a mode to run TimeKiller [default: fast] [possible values: fast, gc]").build());
         try {
-            commandLine = parser.parse(options, args);
+            CommandLine commandLine = parser.parse(options, args);
             if (commandLine.hasOption("h")) {
-                HelpFormatter hf = new HelpFormatter();
-                hf.printHelp(92, "TimeKiller", null, options, null, true);
-                System.exit(0);
+                printAndExit(options);
+            }
+            Arg.MODE = commandLine.getOptionValue("mode", "fast");
+            if (!"fast".equals(Arg.MODE) && !"gc".equals(Arg.MODE)) {
+                System.out.println("Arg for --mode is invalid");
+                printAndExit(options);
+            }
+            Arg.FILEPATH = commandLine.getOptionValue("history_path");
+            System.out.println("Checking " + Arg.FILEPATH);
+            Arg.ENABLE_SESSION = Boolean.parseBoolean(commandLine.getOptionValue("enable_session", "true"));
+            Arg.INITIAL_VALUE = commandLine.getOptionValue("initial_value", null);
+            if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
+                Arg.INITIAL_VALUE_LONG = Long.parseLong(Arg.INITIAL_VALUE);
             }
         } catch (ParseException e) {
-            HelpFormatter hf = new HelpFormatter();
-            hf.printHelp(92, "TimeKiller", null, options, null, true);
-            System.exit(1);
+            printAndExit(options);
         }
     }
 
-    private static void decideReader() {
+    private static void printAndExit(Options options) {
+        HelpFormatter hf = new HelpFormatter();
+        hf.printHelp(120, "TimeKiller", null, options, null, true);
+        System.exit(0);
+    }
+
+    private static void decideReaderAndChecker() {
         File file = new File(Arg.FILEPATH);
         if (!file.exists() || file.isDirectory()) {
             System.err.println("Invalid history path");
             System.exit(1);
-        } else if (Arg.FILEPATH.endsWith(".json")) {
-            reader = new JSONFileReader();
-        } else {
+        } else if (!Arg.FILEPATH.endsWith(".json")) {
             System.err.println("Invalid history file suffix");
             System.exit(1);
+        } else {
+            if ("fast".equals(Arg.MODE)) {
+                reader = new JSONFileFastReader();
+                checker = new FastChecker();
+            } else {
+                reader = new JSONFileGcReader();
+                checker = new GcChecker();
+            }
         }
     }
 }
