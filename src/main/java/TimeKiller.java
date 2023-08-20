@@ -21,7 +21,7 @@ public class TimeKiller {
         Arg.FILEPATH = commandLine.getOptionValue("history_path");
         System.out.println("Checking " + Arg.FILEPATH);
         Arg.ENABLE_SESSION = Boolean.parseBoolean(commandLine.getOptionValue("enable_session", "true"));
-        decideReader(Arg.FILEPATH);
+        decideReader();
 
         Arg.INITIAL_VALUE = commandLine.getOptionValue("initial_value", null);
         if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
@@ -34,8 +34,13 @@ public class TimeKiller {
 
         if (Arg.ENABLE_SESSION) {
             if (sessionViolations.size() > 0) {
-                System.out.println("Violate SESSION");
+                System.out.println("Do NOT satisfy SESSION");
                 sessionViolations.forEach(System.out::println);
+                if (sessionViolations.size() == 1) {
+                    System.out.println("Total 1 violation of SESSION is found");
+                } else {
+                    System.out.println("Total " + sessionViolations.size() + " violations of SESSION are found");
+                }
             } else {
                 System.out.println("Satisfy SESSION");
             }
@@ -44,6 +49,11 @@ public class TimeKiller {
         if (violations.size() > 0) {
             System.out.println("Do NOT satisfy SI");
             violations.forEach(System.out::println);
+            if (violations.size() == 1) {
+                System.out.println("Total 1 violation of SI is found");
+            } else {
+                System.out.println("Total " + violations.size() + " violations of SI are found");
+            }
         } else {
             System.out.println("Satisfy SI");
         }
@@ -76,12 +86,12 @@ public class TimeKiller {
         }
     }
 
-    private static void decideReader(String filepath) {
-        File file = new File(filepath);
+    private static void decideReader() {
+        File file = new File(Arg.FILEPATH);
         if (!file.exists() || file.isDirectory()) {
             System.err.println("Invalid history path");
             System.exit(1);
-        } else if (filepath.endsWith(".json")) {
+        } else if (Arg.FILEPATH.endsWith(".json")) {
             reader = new JSONFileReader();
         } else {
             System.err.println("Invalid history file suffix");

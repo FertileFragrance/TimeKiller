@@ -1,5 +1,6 @@
 package violation;
 
+import arg.Arg;
 import history.transaction.Transaction;
 
 public class NOCONFLICT<KeyType, ValueType> extends Violation {
@@ -20,7 +21,7 @@ public class NOCONFLICT<KeyType, ValueType> extends Violation {
         String s1 = "Violation of NOCONFLICT is found ";
         String s2;
         if ("initial".equals(formerTxn.getTransactionId())) {
-            s2 = "{id=initial, ops=[w(" + key + ", null)], startTs=HLC(0, 0), commitTs=HLC(0, 0)}";
+            s2 = "{id=initial, ops=[w(" + key + ", " + Arg.INITIAL_VALUE + ")], startTs=HLC(0, 0), commitTs=HLC(0, 0)}";
         } else {
             s2 = formerTxn.toString();
         }
