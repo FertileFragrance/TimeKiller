@@ -1,5 +1,7 @@
 package history.transaction;
 
+import java.util.Objects;
+
 public class TransactionEntry<KeyType, ValueType> {
     private final Transaction<KeyType, ValueType> transaction;
 
@@ -27,5 +29,22 @@ public class TransactionEntry<KeyType, ValueType> {
 
     public HybridLogicalClock getTimestamp() {
         return timestamp;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        TransactionEntry<?, ?> that = (TransactionEntry<?, ?>) o;
+        return transaction.equals(that.transaction) && entryType == that.entryType && timestamp.equals(that.timestamp);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(transaction, entryType, timestamp);
     }
 }

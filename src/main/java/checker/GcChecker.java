@@ -12,6 +12,7 @@ import violation.Violation;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Objects;
 
 public class GcChecker implements Checker {
@@ -81,7 +82,6 @@ public class GcChecker implements Checker {
                             ongoingTxns.add(currentTxn);
                         }
                         extWriteKeys.put(k, v);
-
                     }
                     intKeys.put(k, v);
                 }
@@ -94,5 +94,24 @@ public class GcChecker implements Checker {
             }
         }
         return violations;
+    }
+
+    public <KeyType, ValueType> void gc(History<KeyType, ValueType> history) {
+        HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyWritten = history.getKeyWritten();
+        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(keyWritten.size() * 4 / 3 + 1);
+        for (ArrayList<Transaction<KeyType, ValueType>> oldTxns : keyWritten.values()) {
+            remain.add(oldTxns.get(oldTxns.size() - 1));
+        }
+        HashSet<TransactionEntry<KeyType, ValueType>> toRemove = new HashSet<>(4096);
+        for (ArrayList<Transaction<KeyType, ValueType>> oldTxns : keyWritten.values()) {
+            for (int i = 1; i < oldTxns.size() - 1; i++) {
+                Transaction<KeyType, ValueType> oldTxn = oldTxns.get(i);
+                if (!remain.contains(oldTxn)) {
+                    toRemove.add(new TransactionEntry<>(oldTxn, TransactionEntry.EntryType.START, oldTxn.getStartTimestamp()));
+                    toRemove.add(new TransactionEntry<>(oldTxn, TransactionEntry.EntryType.COMMIT, oldTxn.getCommitTimestamp()));
+                }
+            }
+        }
+        history.getTransactionEntries().removeAll(toRemove);
     }
 }
