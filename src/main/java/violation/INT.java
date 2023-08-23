@@ -1,5 +1,7 @@
 package violation;
 
+import history.transaction.OpType;
+import history.transaction.Operation;
 import history.transaction.Transaction;
 
 public class INT<KeyType, ValueType> extends Violation {
@@ -14,6 +16,23 @@ public class INT<KeyType, ValueType> extends Violation {
         this.key = key;
         this.formerValue = formerValue;
         this.latterValue = latterValue;
+    }
+
+    @Override
+    public void fix() {
+        ValueType lastValue = null;
+        boolean first = true;
+        for (Operation<KeyType, ValueType> operation : txn.getOperations()) {
+            if (!key.equals(operation.getKey())) {
+                continue;
+            }
+            if (operation.getType() == OpType.write || first) {
+                lastValue = operation.getValue();
+                first = false;
+            } else {
+                operation.setValue(lastValue);
+            }
+        }
     }
 
     @Override

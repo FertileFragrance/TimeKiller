@@ -20,7 +20,32 @@ public class History<KeyType, ValueType> {
             this.transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
         }
         if (this.transactionEntries != null) {
-            this.transactionEntries.sort(Comparator.comparing(TransactionEntry::getTimestamp));
+            Collections.sort(this.transactionEntries);
+        }
+    }
+
+    public void reset() {
+        if (transactions != null) {
+            transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
+        }
+        if (transactionEntries != null) {
+            transactionEntries.forEach(e -> {
+                if (e.getEntryType() == TransactionEntry.EntryType.START) {
+                    e.setTimestamp(e.getTransaction().getStartTimestamp());
+                } else {
+                    e.setTimestamp(e.getTransaction().getCommitTimestamp());
+                }
+            });
+            Collections.sort(transactionEntries);
+        }
+        for (ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns : keyWritten.values()) {
+            ListIterator<Transaction<KeyType, ValueType>> iterator = writeToKeyTxns.listIterator(writeToKeyTxns.size());
+            while(iterator.hasPrevious()){
+                iterator.previous();
+                if (iterator.nextIndex() > 0) {
+                    iterator.remove();
+                }
+            }
         }
     }
 

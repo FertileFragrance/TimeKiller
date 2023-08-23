@@ -31,7 +31,7 @@ public class OnlineReader implements Reader<Long, Long>{
         int size = jsonArray.size();
         if (history == null) {
             txns = new ArrayList<>(size + 1);
-            txns.add(new Transaction<>(null, null, null, null));
+            txns.add(new Transaction<>(null, null, null, null, null));
         } else {
             txns = history.getTransactions();
             firstIndex = txns.size();
@@ -65,7 +65,7 @@ public class OnlineReader implements Reader<Long, Long>{
                     throw new RuntimeException("Unknown operation type.");
                 }
             }
-            Transaction<Long, Long> txn = new Transaction<>(txnId, ops, startTs, commitTs);
+            Transaction<Long, Long> txn = new Transaction<>(txnId, sid, ops, startTs, commitTs);
             if (Arg.ENABLE_SESSION && lastInSession.containsKey(sid) &&
                     lastInSession.get(sid).getCommitTimestamp().compareTo(txn.getStartTimestamp()) > 0) {
                 violations.add(new SESSION<>(lastInSession.get(sid), txn, sid));
@@ -101,14 +101,13 @@ public class OnlineReader implements Reader<Long, Long>{
 
     private Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> createInitialTxn() {
         HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
-        String transactionId = "initial";
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
         HybridLogicalClock startTimestamp = new HybridLogicalClock(0L, 0L);
         HybridLogicalClock commitTimestamp = new HybridLogicalClock(0L, 0L);
-        Transaction<Long, Long> initialTxn = new Transaction<>(transactionId, operations,
-                startTimestamp, commitTimestamp);
+        Transaction<Long, Long> initialTxn = new Transaction<>("initial", "initial",
+                operations, startTimestamp, commitTimestamp);
         initialTxn.setExtWriteKeys(extWriteKeys);
         for (long key = 0; key <= maxKey; key++) {
             operations.add(new Operation<>(OpType.write, key, null));

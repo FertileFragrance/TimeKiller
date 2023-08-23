@@ -2,7 +2,22 @@ package history.transaction;
 
 import java.util.Objects;
 
-public class TransactionEntry<KeyType, ValueType> {
+public class TransactionEntry<KeyType, ValueType> implements Comparable<TransactionEntry<KeyType, ValueType>> {
+    @Override
+    public int compareTo(TransactionEntry o) {
+        int diff = timestamp.compareTo(o.timestamp);
+        if (diff != 0) {
+            return diff;
+        }
+        if (entryType == EntryType.COMMIT && o.entryType == EntryType.START) {
+            return -1;
+        }
+        if (entryType == EntryType.START && o.entryType == EntryType.COMMIT) {
+            return 1;
+        }
+        return 0;
+    }
+
     private final Transaction<KeyType, ValueType> transaction;
 
     public enum EntryType {
@@ -10,7 +25,7 @@ public class TransactionEntry<KeyType, ValueType> {
     }
 
     private final EntryType entryType;
-    private final HybridLogicalClock timestamp;
+    private HybridLogicalClock timestamp;
 
     public TransactionEntry(Transaction<KeyType, ValueType> transaction,
                             EntryType entryType, HybridLogicalClock timestamp) {
@@ -29,6 +44,10 @@ public class TransactionEntry<KeyType, ValueType> {
 
     public HybridLogicalClock getTimestamp() {
         return timestamp;
+    }
+
+    public void setTimestamp(HybridLogicalClock timestamp) {
+        this.timestamp = timestamp;
     }
 
     @Override

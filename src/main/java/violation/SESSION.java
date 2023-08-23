@@ -3,8 +3,8 @@ package violation;
 import history.transaction.Transaction;
 
 public class SESSION<KeyType, ValueType> extends Violation {
-    private final Transaction<KeyType, ValueType> formerTxn;
-    private final Transaction<KeyType, ValueType> latterTxn;
+    private Transaction<KeyType, ValueType> formerTxn;
+    private Transaction<KeyType, ValueType> latterTxn;
     private final String sessionId;
 
     public SESSION(Transaction<KeyType, ValueType> formerTxn, Transaction<KeyType, ValueType> latterTxn,
@@ -13,6 +13,16 @@ public class SESSION<KeyType, ValueType> extends Violation {
         this.formerTxn = formerTxn;
         this.latterTxn = latterTxn;
         this.sessionId = sessionId;
+    }
+
+    @Override
+    public void fix() {
+        if (formerTxn.getCommitTimestamp().compareTo(latterTxn.getCommitTimestamp()) > 0) {
+            Transaction<KeyType, ValueType> tmp = formerTxn;
+            formerTxn = latterTxn;
+            latterTxn = tmp;
+        }
+        latterTxn.setStartTimestamp(formerTxn.getCommitTimestamp());
     }
 
     @Override

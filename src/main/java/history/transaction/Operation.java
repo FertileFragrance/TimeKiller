@@ -1,11 +1,16 @@
 package history.transaction;
 
+import com.alibaba.fastjson.annotation.JSONField;
+
 import java.util.Objects;
 
 public class Operation<KeyType, ValueType> {
+    @JSONField(name = "t")
     private final OpType type;
+    @JSONField(name = "k")
     private final KeyType key;
-    private final ValueType value;
+    @JSONField(name = "v")
+    private ValueType value;
 
     public Operation(OpType type, KeyType key, ValueType value) {
         this.type = type;
@@ -23,6 +28,10 @@ public class Operation<KeyType, ValueType> {
 
     public ValueType getValue() {
         return value;
+    }
+
+    public void setValue(ValueType value) {
+        this.value = value;
     }
 
     @Override

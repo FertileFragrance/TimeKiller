@@ -19,39 +19,19 @@ public class TimeKiller {
 
     public static void main(String[] args) {
         long start = System.currentTimeMillis();
-        setup(args);
 
+        setup(args);
         decideReaderAndChecker();
 
         Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(Arg.FILEPATH);
         History<?, ?> history = historyAndViolations.getLeft();
         ArrayList<Violation> sessionViolations = historyAndViolations.getRight();
-
-        if (Arg.ENABLE_SESSION) {
-            if (sessionViolations.size() > 0) {
-                System.out.println("Do NOT satisfy SESSION");
-                sessionViolations.forEach(System.out::println);
-                if (sessionViolations.size() == 1) {
-                    System.out.println("Total 1 violation of SESSION is found");
-                } else {
-                    System.out.println("Total " + sessionViolations.size() + " violations of SESSION are found");
-                }
-            } else {
-                System.out.println("Satisfy SESSION");
-            }
-        }
+        printSessionViolations(sessionViolations);
         ArrayList<Violation> violations = checker.check(history);
-        if (violations.size() > 0) {
-            System.out.println("Do NOT satisfy SI");
-            violations.forEach(System.out::println);
-            if (violations.size() == 1) {
-                System.out.println("Total 1 violation of SI is found");
-            } else {
-                System.out.println("Total " + violations.size() + " violations of SI are found");
-            }
-        } else {
-            System.out.println("Satisfy SI");
-        }
+        printSiViolations(violations);
+
+        violations.addAll(sessionViolations);
+        postCheck(history, violations);
 
         long end = System.currentTimeMillis();
         System.out.println("Total time: " + (end - start) / 1000.0 + "s");
@@ -69,6 +49,7 @@ public class TimeKiller {
                 .type(Long.class).desc("the initial value of keys before all writes [default: null]").build());
         options.addOption(Option.builder().longOpt("mode").hasArg(true).type(String.class)
                 .desc("choose a mode to run TimeKiller [default: fast] [possible values: fast, gc]").build());
+        options.addOption(Option.builder().longOpt("fix").desc("fix violations if found").build());
         try {
             CommandLine commandLine = parser.parse(options, args);
             if (commandLine.hasOption("h")) {
@@ -86,6 +67,9 @@ public class TimeKiller {
             if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
                 Arg.INITIAL_VALUE_LONG = Long.parseLong(Arg.INITIAL_VALUE);
             }
+            if (commandLine.hasOption("fix")) {
+                Arg.FIX = true;
+            }
         } catch (ParseException e) {
             printAndExit(options);
         }
@@ -95,6 +79,36 @@ public class TimeKiller {
         HelpFormatter hf = new HelpFormatter();
         hf.printHelp(120, "TimeKiller", null, options, null, true);
         System.exit(0);
+    }
+
+    private static void printSessionViolations(ArrayList<Violation> sessionViolations) {
+        if (Arg.ENABLE_SESSION) {
+            if (sessionViolations.size() > 0) {
+                System.out.println("Do NOT satisfy SESSION");
+                sessionViolations.forEach(System.out::println);
+                if (sessionViolations.size() == 1) {
+                    System.out.println("Total 1 violation of SESSION is found");
+                } else {
+                    System.out.println("Total " + sessionViolations.size() + " violations of SESSION are found");
+                }
+            } else {
+                System.out.println("Satisfy SESSION");
+            }
+        }
+    }
+
+    private static void printSiViolations(ArrayList<Violation> violations) {
+        if (violations.size() > 0) {
+            System.out.println("Do NOT satisfy SI");
+            violations.forEach(System.out::println);
+            if (violations.size() == 1) {
+                System.out.println("Total 1 violation of SI is found");
+            } else {
+                System.out.println("Total " + violations.size() + " violations of SI are found");
+            }
+        } else {
+            System.out.println("Satisfy SI");
+        }
     }
 
     private static void decideReaderAndChecker() {
@@ -114,5 +128,35 @@ public class TimeKiller {
                 checker = new GcChecker();
             }
         }
+    }
+
+    private static void postCheck(History<?, ?> history, ArrayList<Violation> violations) {
+        if (Arg.FIX) {
+            fix(history, violations);
+        }
+    }
+
+    private static void fix(History<?, ?> history, ArrayList<Violation> violations) {
+        if (violations.size() == 0) {
+            System.out.println("No need to fix");
+            return;
+        }
+        violations.forEach(Violation::fix);
+        System.out.println("After fixing for the first time...");
+        history.reset();
+        violations = checker.check(history);
+        printSiViolations(violations);
+        if (violations.size() > 0) {
+            violations.forEach(Violation::fix);
+            System.out.println("After fixing for the second time...");
+            history.reset();
+            violations = checker.check(history);
+            printSiViolations(violations);
+            if (violations.size() > 0) {
+                System.out.println("Fixing failed unexpectedly");
+                return;
+            }
+        }
+        checker.saveToFile(history);
     }
 }

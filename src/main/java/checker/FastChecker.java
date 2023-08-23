@@ -1,5 +1,8 @@
 package checker;
 
+import arg.Arg;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import history.History;
 import history.transaction.OpType;
 import history.transaction.Operation;
@@ -9,6 +12,10 @@ import violation.INT;
 import violation.NOCONFLICT;
 import violation.Violation;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Objects;
@@ -93,5 +100,24 @@ public class FastChecker implements Checker {
             currentTxn.setExtWriteKeys(extWriteKeys);
         }
         return violations;
+    }
+
+    @Override
+    public <KeyType, ValueType> void saveToFile(History<KeyType, ValueType> history) {
+        ArrayList<Transaction<KeyType, ValueType>> transactions = history.getTransactions();
+        ArrayList<Transaction<KeyType, ValueType>> txns = new ArrayList<>(transactions.size() - 1);
+        for (int i = 1; i < transactions.size(); i++) {
+            txns.add(transactions.get(i));
+        }
+        String content = JSON.toJSONString(txns, SerializerFeature.DisableCircularReferenceDetect);
+        File file = new File(Arg.FILEPATH);
+        try {
+            BufferedWriter out = new BufferedWriter(new FileWriter(
+                    new File(Arg.FILEPATH).getParent() + File.separator + "FIXED-" + file.getName()));
+            out.write(content);
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

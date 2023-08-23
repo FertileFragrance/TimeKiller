@@ -1,5 +1,8 @@
 package checker;
 
+import arg.Arg;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.serializer.SerializerFeature;
 import history.History;
 import history.transaction.OpType;
 import history.transaction.Operation;
@@ -10,6 +13,10 @@ import violation.INT;
 import violation.NOCONFLICT;
 import violation.Violation;
 
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -113,5 +120,27 @@ public class GcChecker implements Checker {
             }
         }
         history.getTransactionEntries().removeAll(toRemove);
+    }
+
+    @Override
+    public <KeyType, ValueType> void saveToFile(History<KeyType, ValueType> history) {
+        ArrayList<TransactionEntry<KeyType, ValueType>> entries = history.getTransactionEntries();
+        ArrayList<Transaction<KeyType, ValueType>> txns = new ArrayList<>(entries.size() / 2 - 1);
+        for (int i = 2; i < entries.size(); i++) {
+            TransactionEntry<KeyType, ValueType> entry = entries.get(i);
+            if (entry.getEntryType() == TransactionEntry.EntryType.COMMIT) {
+                txns.add(entry.getTransaction());
+            }
+        }
+        String content = JSON.toJSONString(txns, SerializerFeature.DisableCircularReferenceDetect);
+        File file = new File(Arg.FILEPATH);
+        try {
+            BufferedWriter out = new BufferedWriter(new FileWriter(
+                    new File(Arg.FILEPATH).getParent() + File.separator + "FIXED-" + file.getName()));
+            out.write(content);
+            out.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }

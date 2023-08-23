@@ -1,6 +1,7 @@
 package violation;
 
 import arg.Arg;
+import history.transaction.Operation;
 import history.transaction.Transaction;
 
 public class EXT<KeyType, ValueType> extends Violation {
@@ -26,6 +27,17 @@ public class EXT<KeyType, ValueType> extends Violation {
         this.formerValue = formerValue;
         this.latterValue = latterValue;
         this.extType = EXTType.NEVER;
+    }
+
+    @Override
+    public void fix() {
+        for (Operation<KeyType, ValueType> operation : latterTxn.getOperations()) {
+            if (!key.equals(operation.getKey())) {
+                continue;
+            }
+            operation.setValue(formerValue);
+            break;
+        }
     }
 
     @Override
