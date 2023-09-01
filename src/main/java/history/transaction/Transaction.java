@@ -80,6 +80,7 @@ public class Transaction<KeyType, ValueType> {
     public String toString() {
         return "{" +
                 "id=" + transactionId +
+                ", sid=" + sessionId +
                 ", ops=" + operations +
                 ", startTs=" + startTimestamp +
                 ", commitTS=" + commitTimestamp +
