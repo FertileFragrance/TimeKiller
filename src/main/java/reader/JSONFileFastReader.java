@@ -74,7 +74,8 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         assert txns != null;
         Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> initialTxnAndKeyWritten = createInitialTxn(maxKey);
         txns.set(0, initialTxnAndKeyWritten.getLeft());
-        return Pair.of(new History<>(txns, null, initialTxnAndKeyWritten.getRight()), violations);
+        return Pair.of(new History<>(txns, initialTxnAndKeyWritten.getRight().size(),
+                null, initialTxnAndKeyWritten.getRight(), null), violations);
     }
 
     @Override

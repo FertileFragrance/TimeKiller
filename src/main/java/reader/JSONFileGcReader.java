@@ -71,12 +71,14 @@ public class JSONFileGcReader implements Reader<Long, Long> {
             e.printStackTrace();
         }
         assert txnEntries != null;
-        Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> initialTxnAndKeyWritten = createInitialTxn(maxKey);
-        txnEntries.set(0, new TransactionEntry<>(initialTxnAndKeyWritten.getLeft(), TransactionEntry.EntryType.START,
-                initialTxnAndKeyWritten.getLeft().getStartTimestamp()));
-        txnEntries.set(1, new TransactionEntry<>(initialTxnAndKeyWritten.getLeft(), TransactionEntry.EntryType.COMMIT,
-                initialTxnAndKeyWritten.getLeft().getCommitTimestamp()));
-        return Pair.of(new History<>(null, txnEntries, initialTxnAndKeyWritten.getRight()), violations);
+        Pair<Transaction<Long, Long>, HashMap<Long, Transaction<Long, Long>>> initialTxnAndFrontier = createInitialTxn(maxKey);
+        Transaction<Long, Long> initialTxn = initialTxnAndFrontier.getLeft();
+        txnEntries.set(0, new TransactionEntry<>(initialTxn, TransactionEntry.EntryType.START,
+                initialTxn.getStartTimestamp()));
+        txnEntries.set(1, new TransactionEntry<>(initialTxn, TransactionEntry.EntryType.COMMIT,
+                initialTxn.getCommitTimestamp()));
+        return Pair.of(new History<>(null, initialTxn.getExtWriteKeys().size(),
+                txnEntries, null, initialTxnAndFrontier.getRight()), violations);
     }
 
     @Override
@@ -84,8 +86,8 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         return 0;
     }
 
-    private Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> createInitialTxn(long maxKey) {
-        HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+    private Pair<Transaction<Long, Long>, HashMap<Long, Transaction<Long, Long>>> createInitialTxn(long maxKey) {
+        HashMap<Long, Transaction<Long, Long>> frontier = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
@@ -97,10 +99,8 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         for (long key = 0; key <= maxKey; key++) {
             operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
             extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
-            ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
-            writeToKeyTxns.add(initialTxn);
-            keyWritten.put(key, writeToKeyTxns);
+            frontier.put(key, initialTxn);
         }
-        return Pair.of(initialTxn, keyWritten);
+        return Pair.of(initialTxn, frontier);
     }
 }

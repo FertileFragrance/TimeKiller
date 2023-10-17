@@ -83,7 +83,7 @@ public class Transaction<KeyType, ValueType> {
                 ", sid=" + sessionId +
                 ", ops=" + operations +
                 ", startTs=" + startTimestamp +
-                ", commitTS=" + commitTimestamp +
+                ", commitTs=" + commitTimestamp +
                 '}';
     }
 }

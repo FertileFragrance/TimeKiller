@@ -16,7 +16,7 @@ import violation.Violation;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class OnlineReader implements Reader<Long, Long>{
+public class OnlineReader implements Reader<Long, Long> {
     private History<Long, Long> history;
     private final HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
     private long maxKey = Long.MIN_VALUE;
@@ -87,7 +87,8 @@ public class OnlineReader implements Reader<Long, Long>{
         if (history == null) {
             Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> initialTxnAndKeyWritten = createInitialTxn();
             txns.set(0, initialTxnAndKeyWritten.getLeft());
-            history = new History<>(txns, null, initialTxnAndKeyWritten.getRight());
+            history = new History<>(txns, initialTxnAndKeyWritten.getRight().size(),
+                    null, initialTxnAndKeyWritten.getRight(), null);
         } else {
             updateInitialTxn(lastMaxKey, txns.get(0));
         }

@@ -83,7 +83,7 @@ public class TimeKiller {
 
     private static void printSessionViolations(ArrayList<Violation> sessionViolations) {
         if (Arg.ENABLE_SESSION) {
-            if (sessionViolations.size() > 0) {
+            if (!sessionViolations.isEmpty()) {
                 System.out.println("Do NOT satisfy SESSION");
                 sessionViolations.forEach(System.out::println);
                 if (sessionViolations.size() == 1) {
@@ -98,7 +98,7 @@ public class TimeKiller {
     }
 
     private static void printSiViolations(ArrayList<Violation> violations) {
-        if (violations.size() > 0) {
+        if (!violations.isEmpty()) {
             System.out.println("Do NOT satisfy SI");
             violations.forEach(System.out::println);
             if (violations.size() == 1) {
@@ -137,7 +137,7 @@ public class TimeKiller {
     }
 
     private static void fix(History<?, ?> history, ArrayList<Violation> violations) {
-        if (violations.size() == 0) {
+        if (violations.isEmpty()) {
             System.out.println("No need to fix");
             return;
         }
@@ -146,13 +146,13 @@ public class TimeKiller {
         history.reset();
         violations = checker.check(history);
         printSiViolations(violations);
-        if (violations.size() > 0) {
+        if (!violations.isEmpty()) {
             violations.forEach(Violation::fix);
             System.out.println("After fixing for the second time...");
             history.reset();
             violations = checker.check(history);
             printSiViolations(violations);
-            if (violations.size() > 0) {
+            if (!violations.isEmpty()) {
                 System.out.println("Fixing failed unexpectedly");
                 return;
             }

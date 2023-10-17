@@ -27,8 +27,8 @@ public class GcChecker implements Checker {
     public <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history) {
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<Operation<KeyType, ValueType>, EXT<KeyType, ValueType>> incompleteExts = new HashMap<>(9);
-        HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyWritten = history.getKeyWritten();
-        HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyOngoing = new HashMap<>(keyWritten.size() * 4 / 3 + 1);
+        HashMap<KeyType, Transaction<KeyType, ValueType>> frontier = history.getFrontier();
+        HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyOngoing = new HashMap<>(history.getKeyNumber() * 4 / 3 + 1);
         for (int i = 2; i < history.getTransactionEntries().size(); i++) {
             TransactionEntry<KeyType, ValueType> currentEntry = history.getTransactionEntries().get(i);
             Transaction<KeyType, ValueType> currentTxn = currentEntry.getTransaction();
@@ -43,8 +43,7 @@ public class GcChecker implements Checker {
                     if (op.getType() == OpType.read) {
                         if (!intKeys.containsKey(k)) {
                             // check EXT
-                            ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns = keyWritten.get(k);
-                            Transaction<KeyType, ValueType> previousTxn = writeToKeyTxns.get(writeToKeyTxns.size() - 1);
+                            Transaction<KeyType, ValueType> previousTxn = frontier.get(k);
                             if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
                                 // violate EXT
                                 EXT<KeyType, ValueType> extViolation = new EXT<>(previousTxn,
@@ -58,12 +57,19 @@ public class GcChecker implements Checker {
                                         break;
                                     }
                                 }
-                                for (int j = writeToKeyTxns.size() - 2; j >= 0; j--) {
-                                    Transaction<KeyType, ValueType> writeTxn = writeToKeyTxns.get(j);
-                                    if (Objects.equals(writeTxn.getExtWriteKeys().get(k), v)) {
-                                        extViolation.setWriteLatterValueTxn(writeTxn);
-                                        extViolation.setExtType(EXT.EXTType.BEFORE);
-                                        break;
+                                if (Objects.equals(history.getInitialTxn().getExtWriteKeys().get(k), v)) {
+                                    extViolation.setWriteLatterValueTxn(history.getInitialTxn());
+                                    extViolation.setExtType(EXT.EXTType.BEFORE);
+                                }
+                                if (extViolation.getExtType() == EXT.EXTType.NEVER) {
+                                    for (int j = i - 1; j >= 2; j--) {
+                                        Transaction<KeyType, ValueType> writeTxn = history
+                                                .getTransactionEntries().get(j).getTransaction();
+                                        if (Objects.equals(writeTxn.getExtWriteKeys().get(k), v)) {
+                                            extViolation.setWriteLatterValueTxn(writeTxn);
+                                            extViolation.setExtType(EXT.EXTType.BEFORE);
+                                            break;
+                                        }
                                     }
                                 }
                                 if (extViolation.getExtType() == EXT.EXTType.NEVER) {
@@ -96,27 +102,21 @@ public class GcChecker implements Checker {
             } else {
                 for (KeyType k : currentTxn.getExtWriteKeys().keySet()) {
                     keyOngoing.get(k).remove(currentTxn);
-                    keyWritten.get(k).add(currentTxn);
+                    frontier.put(k, currentTxn);
                 }
             }
         }
         return violations;
     }
 
-    public <KeyType, ValueType> void gc(History<KeyType, ValueType> history) {
-        HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyWritten = history.getKeyWritten();
-        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(keyWritten.size() * 4 / 3 + 1);
-        for (ArrayList<Transaction<KeyType, ValueType>> oldTxns : keyWritten.values()) {
-            remain.add(oldTxns.get(oldTxns.size() - 1));
-        }
-        HashSet<TransactionEntry<KeyType, ValueType>> toRemove = new HashSet<>(4096);
-        for (ArrayList<Transaction<KeyType, ValueType>> oldTxns : keyWritten.values()) {
-            for (int i = 1; i < oldTxns.size() - 1; i++) {
-                Transaction<KeyType, ValueType> oldTxn = oldTxns.get(i);
-                if (!remain.contains(oldTxn)) {
-                    toRemove.add(new TransactionEntry<>(oldTxn, TransactionEntry.EntryType.START, oldTxn.getStartTimestamp()));
-                    toRemove.add(new TransactionEntry<>(oldTxn, TransactionEntry.EntryType.COMMIT, oldTxn.getCommitTimestamp()));
-                }
+    public <KeyType, ValueType> void gc(History<KeyType, ValueType> history, int currentIndex) {
+        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(history.getFrontier().values());
+        HashSet<TransactionEntry<KeyType, ValueType>> toRemove = new HashSet<>(currentIndex * 4 / 3 + 1);
+        ArrayList<TransactionEntry<KeyType, ValueType>> transactionEntries = history.getTransactionEntries();
+        for (int i = 2; i < currentIndex; i++) {
+            TransactionEntry<KeyType, ValueType> entry = transactionEntries.get(i);
+            if (!remain.contains(entry.getTransaction())) {
+                toRemove.add(entry);
             }
         }
         history.getTransactionEntries().removeAll(toRemove);
