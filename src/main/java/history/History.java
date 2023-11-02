@@ -37,7 +37,7 @@ public class History<KeyType, ValueType> {
             transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
             for (ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns : keyWritten.values()) {
                 ListIterator<Transaction<KeyType, ValueType>> it = writeToKeyTxns.listIterator(writeToKeyTxns.size());
-                while(it.hasPrevious()){
+                while (it.hasPrevious()) {
                     it.previous();
                     if (it.nextIndex() > 0) {
                         it.remove();
@@ -54,6 +54,7 @@ public class History<KeyType, ValueType> {
                 }
             });
             Collections.sort(transactionEntries);
+            frontier.forEach((k, v) -> frontier.put(k, initialTxn));
         }
     }
 
