@@ -7,4 +7,5 @@ public class Arg {
     public static Long INITIAL_VALUE_LONG = null;
     public static String MODE = "fast";
     public static boolean FIX = false;
+    public static int NUM_PER_GC = 20000;
 }

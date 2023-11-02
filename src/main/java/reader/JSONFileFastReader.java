@@ -71,6 +71,7 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
+        System.gc();
         assert txns != null;
         Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> initialTxnAndKeyWritten = createInitialTxn(maxKey);
         txns.set(0, initialTxnAndKeyWritten.getLeft());
@@ -80,7 +81,7 @@ public class JSONFileFastReader implements Reader<Long, Long> {
 
     @Override
     public int obtainFirstIndexToCheck() {
-        return 0;
+        return 1;
     }
 
     private Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> createInitialTxn(long maxKey) {

@@ -41,15 +41,17 @@ public class TimeKiller {
         CommandLineParser parser = new DefaultParser();
         Options options = new Options();
         options.addOption(Option.builder("h").longOpt("help").desc("print usage help and exit").build());
-        options.addOption(Option.builder().longOpt("history_path").required().hasArg(true)
-                .type(String.class).desc("the filepath of history in json format").build());
-        options.addOption(Option.builder().longOpt("enable_session").hasArg(true)
-                .type(Boolean.class).desc("whether to check the SESSION axiom [default: true]").build());
-        options.addOption(Option.builder().longOpt("initial_value").hasArg(true)
-                .type(Long.class).desc("the initial value of keys before all writes [default: null]").build());
+        options.addOption(Option.builder().longOpt("history_path").required().hasArg(true).type(String.class)
+                .desc("the filepath of history in json format").build());
+        options.addOption(Option.builder().longOpt("enable_session").hasArg(true).type(Boolean.class)
+                .desc("whether to check the SESSION axiom using timestamps [default: true]").build());
+        options.addOption(Option.builder().longOpt("initial_value").hasArg(true).type(Long.class)
+                .desc("the initial value of keys before all writes [default: null]").build());
         options.addOption(Option.builder().longOpt("mode").hasArg(true).type(String.class)
                 .desc("choose a mode to run TimeKiller [default: fast] [possible values: fast, gc]").build());
         options.addOption(Option.builder().longOpt("fix").desc("fix violations if found").build());
+        options.addOption(Option.builder().longOpt("num_per_gc").hasArg(true).type(Integer.class)
+                .desc("the number of checked transactions for each gc [default: 20000]").build());
         try {
             CommandLine commandLine = parser.parse(options, args);
             if (commandLine.hasOption("h")) {
@@ -69,6 +71,9 @@ public class TimeKiller {
             }
             if (commandLine.hasOption("fix")) {
                 Arg.FIX = true;
+            }
+            if (commandLine.hasOption("num_per_gc")) {
+                Arg.NUM_PER_GC = Integer.parseInt(commandLine.getOptionValue("num_per_gc"));
             }
         } catch (ParseException e) {
             printAndExit(options);

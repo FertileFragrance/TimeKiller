@@ -70,6 +70,7 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
+        System.gc();
         assert txnEntries != null;
         Pair<Transaction<Long, Long>, HashMap<Long, Transaction<Long, Long>>> initialTxnAndFrontier = createInitialTxn(maxKey);
         Transaction<Long, Long> initialTxn = initialTxnAndFrontier.getLeft();
@@ -83,7 +84,7 @@ public class JSONFileGcReader implements Reader<Long, Long> {
 
     @Override
     public int obtainFirstIndexToCheck() {
-        return 0;
+        return 2;
     }
 
     private Pair<Transaction<Long, Long>, HashMap<Long, Transaction<Long, Long>>> createInitialTxn(long maxKey) {

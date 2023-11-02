@@ -29,6 +29,7 @@ public class GcChecker implements Checker {
         HashMap<Operation<KeyType, ValueType>, EXT<KeyType, ValueType>> incompleteExts = new HashMap<>(9);
         HashMap<KeyType, Transaction<KeyType, ValueType>> frontier = history.getFrontier();
         HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyOngoing = new HashMap<>(history.getKeyNumber() * 4 / 3 + 1);
+        int checkedEntryCount = 0;
         for (int i = 2; i < history.getTransactionEntries().size(); i++) {
             TransactionEntry<KeyType, ValueType> currentEntry = history.getTransactionEntries().get(i);
             Transaction<KeyType, ValueType> currentTxn = currentEntry.getTransaction();
@@ -105,12 +106,20 @@ public class GcChecker implements Checker {
                     frontier.put(k, currentTxn);
                 }
             }
+            checkedEntryCount++;
+            if (checkedEntryCount == Arg.NUM_PER_GC * 2) {
+                i = gc(history, i, keyOngoing);
+                System.gc();
+                checkedEntryCount = 0;
+            }
         }
         return violations;
     }
 
-    public <KeyType, ValueType> void gc(History<KeyType, ValueType> history, int currentIndex) {
+    public <KeyType, ValueType> int gc(History<KeyType, ValueType> history, int currentIndex,
+                                       HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyOngoing) {
         HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(history.getFrontier().values());
+        keyOngoing.forEach((k, v) -> remain.addAll(v));
         HashSet<TransactionEntry<KeyType, ValueType>> toRemove = new HashSet<>(currentIndex * 4 / 3 + 1);
         ArrayList<TransactionEntry<KeyType, ValueType>> transactionEntries = history.getTransactionEntries();
         for (int i = 2; i < currentIndex; i++) {
@@ -119,7 +128,9 @@ public class GcChecker implements Checker {
                 toRemove.add(entry);
             }
         }
-        history.getTransactionEntries().removeAll(toRemove);
+        TransactionEntry<KeyType, ValueType> currentEntry = transactionEntries.get(currentIndex);
+        transactionEntries.removeAll(toRemove);
+        return transactionEntries.indexOf(currentEntry);
     }
 
     @Override
