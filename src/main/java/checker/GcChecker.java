@@ -1,6 +1,6 @@
 package checker;
 
-import arg.Arg;
+import info.*;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import history.History;
@@ -108,8 +108,10 @@ public class GcChecker implements Checker {
             }
             checkedEntryCount++;
             if (checkedEntryCount == Arg.NUM_PER_GC * 2) {
+                long gcStart = System.currentTimeMillis();
                 i = gc(history, i, keyOngoing);
                 System.gc();
+                Stats.addGcTime(gcStart, System.currentTimeMillis());
                 checkedEntryCount = 0;
             }
         }

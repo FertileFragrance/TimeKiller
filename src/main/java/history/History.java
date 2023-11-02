@@ -2,6 +2,7 @@ package history;
 
 import history.transaction.Transaction;
 import history.transaction.TransactionEntry;
+import info.Stats;
 
 import java.util.*;
 
@@ -22,6 +23,9 @@ public class History<KeyType, ValueType> {
         this.transactionEntries = transactionEntries;
         this.keyWritten = keyWritten;
         this.frontier = frontier;
+
+        Stats.SORTING_START = System.currentTimeMillis();
+
         if (this.transactions != null) {
             this.transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
             this.initialTxn = this.transactions.get(0);
@@ -30,6 +34,8 @@ public class History<KeyType, ValueType> {
             Collections.sort(this.transactionEntries);
             this.initialTxn = this.transactionEntries.get(0).getTransaction();
         }
+
+        Stats.SORTING_END = System.currentTimeMillis();
     }
 
     public void reset() {

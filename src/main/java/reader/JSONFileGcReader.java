@@ -1,6 +1,6 @@
 package reader;
 
-import arg.Arg;
+import info.*;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONReader;
@@ -18,6 +18,8 @@ import java.util.HashMap;
 public class JSONFileGcReader implements Reader<Long, Long> {
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(String filepath) {
+        Stats.LOADING_START = System.currentTimeMillis();
+
         ArrayList<TransactionEntry<Long, Long>> txnEntries = null;
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
@@ -78,6 +80,9 @@ public class JSONFileGcReader implements Reader<Long, Long> {
                 initialTxn.getStartTimestamp()));
         txnEntries.set(1, new TransactionEntry<>(initialTxn, TransactionEntry.EntryType.COMMIT,
                 initialTxn.getCommitTimestamp()));
+
+        Stats.LOADING_END = System.currentTimeMillis();
+
         return Pair.of(new History<>(null, initialTxn.getExtWriteKeys().size(),
                 txnEntries, null, initialTxnAndFrontier.getRight()), violations);
     }

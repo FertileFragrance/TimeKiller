@@ -1,6 +1,6 @@
 package violation;
 
-import arg.Arg;
+import info.Arg;
 import history.transaction.Operation;
 import history.transaction.Transaction;
 

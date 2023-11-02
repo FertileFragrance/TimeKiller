@@ -1,6 +1,6 @@
 package reader;
 
-import arg.Arg;
+import info.Arg;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONArray;

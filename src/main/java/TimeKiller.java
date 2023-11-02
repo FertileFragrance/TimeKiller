@@ -1,4 +1,4 @@
-import arg.Arg;
+import info.*;
 import checker.Checker;
 import checker.FastChecker;
 import checker.GcChecker;
@@ -18,7 +18,7 @@ public class TimeKiller {
     private static Checker checker;
 
     public static void main(String[] args) {
-        long start = System.currentTimeMillis();
+        Stats.TOTAL_START = System.currentTimeMillis();
 
         setup(args);
         decideReaderAndChecker();
@@ -27,14 +27,17 @@ public class TimeKiller {
         History<?, ?> history = historyAndViolations.getLeft();
         ArrayList<Violation> sessionViolations = historyAndViolations.getRight();
         printSessionViolations(sessionViolations);
+
+        Stats.CHECKING_START = System.currentTimeMillis();
         ArrayList<Violation> violations = checker.check(history);
+        Stats.CHECKING_END = System.currentTimeMillis();
         printSiViolations(violations);
 
         violations.addAll(sessionViolations);
         postCheck(history, violations);
 
-        long end = System.currentTimeMillis();
-        System.out.println("Total time: " + (end - start) / 1000.0 + "s");
+        Stats.TOTAL_END = System.currentTimeMillis();
+        Stats.printTimeUsage();
     }
 
     private static void setup(String[] args) {

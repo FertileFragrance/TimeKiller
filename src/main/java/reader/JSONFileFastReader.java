@@ -10,7 +10,7 @@ import history.transaction.Operation;
 import history.transaction.Transaction;
 import violation.SESSION;
 import violation.Violation;
-import arg.Arg;
+import info.*;
 import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileNotFoundException;
@@ -21,6 +21,8 @@ import java.util.HashMap;
 public class JSONFileFastReader implements Reader<Long, Long> {
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(String filepath) {
+        Stats.LOADING_START = System.currentTimeMillis();
+
         ArrayList<Transaction<Long, Long>> txns = null;
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
@@ -75,6 +77,9 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         assert txns != null;
         Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> initialTxnAndKeyWritten = createInitialTxn(maxKey);
         txns.set(0, initialTxnAndKeyWritten.getLeft());
+
+        Stats.LOADING_END = System.currentTimeMillis();
+
         return Pair.of(new History<>(txns, initialTxnAndKeyWritten.getRight().size(),
                 null, initialTxnAndKeyWritten.getRight(), null), violations);
     }

@@ -1,4 +1,4 @@
-package arg;
+package info;
 
 public class Arg {
     public static String FILEPATH;
