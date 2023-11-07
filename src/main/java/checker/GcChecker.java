@@ -89,10 +89,6 @@ public class GcChecker implements Checker {
                             incompleteExts.remove(op, extViolation);
                         }
                         if (!extWriteKeys.containsKey(k)) {
-                            // check NOCONFLICT
-                            for (int j = ongoingTxns.size() - 1; j >= 0; j--) {
-                                violations.add(new NOCONFLICT<>(ongoingTxns.get(j), currentTxn, k));
-                            }
                             ongoingTxns.add(currentTxn);
                         }
                         extWriteKeys.put(k, v);
@@ -102,7 +98,12 @@ public class GcChecker implements Checker {
                 currentTxn.setExtWriteKeys(extWriteKeys);
             } else {
                 for (KeyType k : currentTxn.getExtWriteKeys().keySet()) {
-                    keyOngoing.get(k).remove(currentTxn);
+                    ArrayList<Transaction<KeyType, ValueType>> ongoingTxns = keyOngoing.get(k);
+                    ongoingTxns.remove(currentTxn);
+                    // check NOCONFLICT
+                    for (int j = ongoingTxns.size() - 1; j >= 0; j--) {
+                        violations.add(new NOCONFLICT<>(ongoingTxns.get(j), currentTxn, k));
+                    }
                     frontier.put(k, currentTxn);
                 }
             }
