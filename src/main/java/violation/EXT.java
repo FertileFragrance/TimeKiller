@@ -49,13 +49,19 @@ public class EXT<KeyType, ValueType> extends Violation {
         } else {
             s2 = formerTxn.toString();
         }
+        String s3;
+        if ("initial".equals(writeLatterValueTxn.getTransactionId())) {
+            s3 = "{id=initial, ops=[w(" + key + ", " + Arg.INITIAL_VALUE + ")], startTs=HLC(0, 0), commitTs=HLC(0, 0)}";
+        } else {
+            s3 = writeLatterValueTxn.toString();
+        }
         return s1 + "{" +
                 "formerTxn=" + s2 +
                 ", latterTxn=" + latterTxn +
                 ", key=" + key +
                 ", formerValue=" + formerValue +
                 ", latterValue=" + latterValue +
-                ", writeLatterValueTxn=" + writeLatterValueTxn +
+                ", writeLatterValueTxn=" + s3 +
                 ", extType=" + extType +
                 '}';
     }
