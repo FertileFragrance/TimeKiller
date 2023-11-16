@@ -50,7 +50,9 @@ public class EXT<KeyType, ValueType> extends Violation {
             s2 = formerTxn.toString();
         }
         String s3;
-        if ("initial".equals(writeLatterValueTxn.getTransactionId())) {
+        if (writeLatterValueTxn == null) {
+            s3 = "null";
+        } else if ("initial".equals(writeLatterValueTxn.getTransactionId())) {
             s3 = "{id=initial, ops=[w(" + key + ", " + Arg.INITIAL_VALUE + ")], startTs=HLC(0, 0), commitTs=HLC(0, 0)}";
         } else {
             s3 = writeLatterValueTxn.toString();
