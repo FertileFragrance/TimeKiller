@@ -8,6 +8,4 @@ import java.util.ArrayList;
 
 public interface Reader<KeyType, ValueType> {
     Pair<History<KeyType, ValueType>, ArrayList<Violation>> read(String filepathOrJsonString);
-
-    int obtainFirstIndexToCheck();
 }

@@ -84,11 +84,6 @@ public class JSONFileFastReader implements Reader<Long, Long> {
                 null, initialTxnAndKeyWritten.getRight(), null), violations);
     }
 
-    @Override
-    public int obtainFirstIndexToCheck() {
-        return 1;
-    }
-
     private Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> createInitialTxn(long maxKey) {
         HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;

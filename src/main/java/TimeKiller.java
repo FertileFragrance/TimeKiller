@@ -1,9 +1,11 @@
+import checker.OnlineChecker;
 import info.*;
 import checker.Checker;
 import checker.FastChecker;
 import checker.GcChecker;
 import history.History;
 import reader.JSONFileGcReader;
+import reader.OnlineReader;
 import violation.Violation;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.tuple.Pair;
@@ -22,6 +24,11 @@ public class TimeKiller {
 
         setup(args);
         decideReaderAndChecker();
+
+        if ("online".equals(Arg.MODE)) {
+            runOnlineMode();
+            return;
+        }
 
         Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(Arg.FILEPATH);
         History<?, ?> history = historyAndViolations.getLeft();
@@ -61,7 +68,7 @@ public class TimeKiller {
                 printAndExit(options);
             }
             Arg.MODE = commandLine.getOptionValue("mode", "fast");
-            if (!"fast".equals(Arg.MODE) && !"gc".equals(Arg.MODE)) {
+            if (!"fast".equals(Arg.MODE) && !"gc".equals(Arg.MODE) && !"online".equals(Arg.MODE)) {
                 System.out.println("Arg for --mode is invalid");
                 printAndExit(options);
             }
@@ -131,9 +138,12 @@ public class TimeKiller {
             if ("fast".equals(Arg.MODE)) {
                 reader = new JSONFileFastReader();
                 checker = new FastChecker();
-            } else {
+            } else if ("gc".equals(Arg.MODE)) {
                 reader = new JSONFileGcReader();
                 checker = new GcChecker();
+            } else {
+                reader = new OnlineReader();
+                checker = new OnlineChecker();
             }
         }
     }
@@ -166,5 +176,9 @@ public class TimeKiller {
             }
         }
         checker.saveToFile(history);
+    }
+
+    private static void runOnlineMode() {
+        // TODO
     }
 }

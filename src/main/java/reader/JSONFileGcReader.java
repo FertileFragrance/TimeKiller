@@ -87,11 +87,6 @@ public class JSONFileGcReader implements Reader<Long, Long> {
                 txnEntries, null, initialTxnAndFrontier.getRight()), violations);
     }
 
-    @Override
-    public int obtainFirstIndexToCheck() {
-        return 2;
-    }
-
     private Pair<Transaction<Long, Long>, HashMap<Long, Transaction<Long, Long>>> createInitialTxn(long maxKey) {
         HashMap<Long, Transaction<Long, Long>> frontier = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;

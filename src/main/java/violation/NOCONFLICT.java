@@ -13,6 +13,10 @@ public class NOCONFLICT<KeyType, ValueType> extends Violation {
         this.type = ViolationType.NOCONFLICT;
         this.formerTxn = formerTxn;
         this.latterTxn = latterTxn;
+        if (formerTxn.getStartTimestamp().compareTo(latterTxn.getStartTimestamp()) > 0) {
+            this.formerTxn = latterTxn;
+            this.latterTxn = formerTxn;
+        }
         this.key = key;
     }
 

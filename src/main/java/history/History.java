@@ -2,6 +2,7 @@ package history;
 
 import history.transaction.Transaction;
 import history.transaction.TransactionEntry;
+import info.Arg;
 import info.Stats;
 
 import java.util.*;
@@ -13,6 +14,9 @@ public class History<KeyType, ValueType> {
     private final int keyNumber;
     private final HashMap<KeyType, Transaction<KeyType, ValueType>> frontier;
     private final Transaction<KeyType, ValueType> initialTxn;
+
+    private int startEntryIndex;
+    private int commitEntryIndex;
 
     public History(ArrayList<Transaction<KeyType, ValueType>> transactions, int keyNumber,
                    ArrayList<TransactionEntry<KeyType, ValueType>> transactionEntries,
@@ -26,12 +30,14 @@ public class History<KeyType, ValueType> {
 
         Stats.SORTING_START = System.currentTimeMillis();
 
-        if (this.transactions != null) {
+        if ("fast".equals(Arg.MODE)) {
             this.transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
             this.initialTxn = this.transactions.get(0);
-        } else {
-            // this.transactionEntries != null
+        } else if ("gc".equals(Arg.MODE)) {
             Collections.sort(this.transactionEntries);
+            this.initialTxn = this.transactionEntries.get(0).getTransaction();
+        } else {
+            // Arg.MODE is online
             this.initialTxn = this.transactionEntries.get(0).getTransaction();
         }
 
@@ -39,7 +45,7 @@ public class History<KeyType, ValueType> {
     }
 
     public void reset() {
-        if (transactions != null) {
+        if ("fast".equals(Arg.MODE)) {
             transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
             for (ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns : keyWritten.values()) {
                 ListIterator<Transaction<KeyType, ValueType>> it = writeToKeyTxns.listIterator(writeToKeyTxns.size());
@@ -50,8 +56,7 @@ public class History<KeyType, ValueType> {
                     }
                 }
             }
-        }
-        if (transactionEntries != null) {
+        } else if ("gc".equals(Arg.MODE)) {
             transactionEntries.forEach(e -> {
                 if (e.getEntryType() == TransactionEntry.EntryType.START) {
                     e.setTimestamp(e.getTransaction().getStartTimestamp());
@@ -86,5 +91,21 @@ public class History<KeyType, ValueType> {
 
     public Transaction<KeyType, ValueType> getInitialTxn() {
         return initialTxn;
+    }
+
+    public int getStartEntryIndex() {
+        return startEntryIndex;
+    }
+
+    public void setStartEntryIndex(int startEntryIndex) {
+        this.startEntryIndex = startEntryIndex;
+    }
+
+    public int getCommitEntryIndex() {
+        return commitEntryIndex;
+    }
+
+    public void setCommitEntryIndex(int commitEntryIndex) {
+        this.commitEntryIndex = commitEntryIndex;
     }
 }

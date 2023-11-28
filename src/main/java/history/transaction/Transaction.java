@@ -21,6 +21,9 @@ public class Transaction<KeyType, ValueType> {
     @JSONField(serialize = false)
     private HashMap<KeyType, ValueType> extWriteKeys;
 
+    @JSONField(serialize = false)
+    private HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier;
+
     public String getTransactionId() {
         return transactionId;
     }
@@ -51,6 +54,14 @@ public class Transaction<KeyType, ValueType> {
 
     public void setExtWriteKeys(HashMap<KeyType, ValueType> extWriteKeys) {
         this.extWriteKeys = extWriteKeys;
+    }
+
+    public HashMap<KeyType, Transaction<KeyType, ValueType>> getCommitFrontier() {
+        return commitFrontier;
+    }
+
+    public void setCommitFrontier(HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier) {
+        this.commitFrontier = commitFrontier;
     }
 
     public Transaction(String transactionId, String sessionId, ArrayList<Operation<KeyType, ValueType>> operations,
