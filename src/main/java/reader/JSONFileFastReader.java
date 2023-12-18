@@ -27,6 +27,8 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
         long maxKey = Long.MIN_VALUE;
+        long readOpCount = 0L;
+        long writeOpCount = 0L;
         try {
             JSONReader jsonReader = new JSONReader(new FileReader(filepath));
             JSONArray jsonArray = (JSONArray) jsonReader.readObject();
@@ -55,9 +57,11 @@ public class JSONFileFastReader implements Reader<Long, Long> {
                     if ("w".equalsIgnoreCase(type) || "write".equalsIgnoreCase(type)) {
                         Operation<Long, Long> op = new Operation<>(OpType.write, key, value);
                         ops.add(op);
+                        writeOpCount++;
                     } else if ("r".equalsIgnoreCase(type) || "read".equalsIgnoreCase(type)) {
                         Operation<Long, Long> op = new Operation<>(OpType.read, key, value);
                         ops.add(op);
+                        readOpCount++;
                     } else {
                         throw new RuntimeException("Unknown operation type.");
                     }
@@ -79,6 +83,16 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         txns.set(0, initialTxnAndKeyWritten.getLeft());
 
         Stats.LOADING_END = System.currentTimeMillis();
+
+        long opCount = readOpCount + writeOpCount;
+        System.out.println("==========[ Txn Info Statistics ]==========");
+        System.out.printf("|  Number of txns:          %-10d s  |\n", txns.size() - 1);
+        System.out.printf("|  Number of sessions:      %-10d s  |\n", lastInSession.size() - 1);
+        System.out.printf("|  Maximum key:             %-10d s  |\n", maxKey);
+        System.out.printf("|  Avg num of ops per txn:  %-10f s  |\n", (double) opCount / (txns.size() - 1));
+        System.out.printf("|  Read op percentage:      %-10f s  |\n", (double) readOpCount / opCount);
+        System.out.printf("|  Write op percentage:     %-10f s  |\n", (double) writeOpCount / opCount);
+        System.out.println("===========================================");
 
         return Pair.of(new History<>(txns, initialTxnAndKeyWritten.getRight().size(),
                 null, initialTxnAndKeyWritten.getRight(), null), violations);
