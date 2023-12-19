@@ -90,7 +90,7 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         long opCount = readOpCount + writeOpCount;
         System.out.println("==========[ Txn Info Statistics ]==========");
         System.out.printf("|  Number of txns:          %-10d s  |\n", txnEntries.size() / 2 - 1);
-        System.out.printf("|  Number of sessions:      %-10d s  |\n", lastInSession.size() - 1);
+        System.out.printf("|  Number of sessions:      %-10d s  |\n", lastInSession.size());
         System.out.printf("|  Maximum key:             %-10d s  |\n", maxKey);
         System.out.printf("|  Avg num of ops per txn:  %-10f s  |\n", (double) opCount / (txnEntries.size() / 2 - 1));
         System.out.printf("|  Read op percentage:      %-10f s  |\n", (double) readOpCount / opCount);
