@@ -68,9 +68,11 @@ public class OnlineReader implements Reader<Long, Long> {
             }
         }
         Transaction<Long, Long> txn = new Transaction<>(txnId, sid, ops, startTs, commitTs);
+        boolean violateSession = false;
         if (Arg.ENABLE_SESSION && lastInSession.containsKey(sid) &&
                 lastInSession.get(sid).getCommitTimestamp().compareTo(txn.getStartTimestamp()) > 0) {
             violations.add(new SESSION<>(lastInSession.get(sid), txn, sid));
+            violateSession = true;
         }
         lastInSession.put(sid, txn);
         // insertion sort
@@ -93,7 +95,11 @@ public class OnlineReader implements Reader<Long, Long> {
                     && !checkedTxns.contains(existingEntry.getTransaction())) {
                 for (Long k : existingEntry.getTransaction().getExtWriteKeys().keySet()) {
                     if (writeKeys.contains(k)) {
-                        violations.add(new NOCONFLICT<>(existingEntry.getTransaction(), txn, k));
+                        if (violateSession) {
+                            violations.add(1, new NOCONFLICT<>(existingEntry.getTransaction(), txn, k));
+                        } else {
+                            violations.add(0, new NOCONFLICT<>(existingEntry.getTransaction(), txn, k));
+                        }
                     }
                 }
                 checkedTxns.add(existingEntry.getTransaction());

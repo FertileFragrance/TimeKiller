@@ -1,22 +1,20 @@
 package checker;
 
+import checker.online.MarkTimeoutTask;
 import history.History;
 import history.transaction.OpType;
 import history.transaction.Operation;
 import history.transaction.Transaction;
 import history.transaction.TransactionEntry;
+import info.Arg;
 import violation.EXT;
 import violation.INT;
 import violation.Violation;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Objects;
+import java.util.*;
 
 public class OnlineChecker implements Checker {
-    private final ArrayList<Violation> potentialViolations = new ArrayList<>();
-
-    private final HashMap<Operation<?, ?>, EXT<?, ?>> incompleteExts = new HashMap<>(9);
+    private final Timer timer = new Timer();
 
     @Override
     public <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history) {
@@ -38,25 +36,18 @@ public class OnlineChecker implements Checker {
             ValueType v = op.getValue();
             if (op.getType() == OpType.read) {
                 if (!intKeys.containsKey(k)) {
-                    // TODO check EXT
-                    Transaction<KeyType, ValueType> previousTxn;
-                    if (lastCommittedTxn.getCommitFrontier().containsKey(k)) {
-                        previousTxn = lastCommittedTxn.getCommitFrontier().get(k);
-                    } else {
-                        previousTxn = history.getInitialTxn();
-                    }
+                    // check EXT
+                    Transaction<KeyType, ValueType> previousTxn = lastCommittedTxn.getCommitFrontier()
+                            .getOrDefault(k, history.getInitialTxn());
                     if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
-                        // TODO violate EXT
-                        EXT<KeyType, ValueType> extViolation = new EXT<>(previousTxn,
-                                currentTxn, k, previousTxn.getExtWriteKeys().get(k), v);
-                        potentialViolations.add(extViolation);
-                        incompleteExts.put(new Operation<>(OpType.write, k, v), extViolation);
+                        // violate EXT so far
+                        currentTxn.getExtViolations().add(new EXT<>(previousTxn,
+                                currentTxn, k, previousTxn.getExtWriteKeys().get(k), v));
                     }
                 } else if (!Objects.equals(intKeys.get(k), v)) {
                     violations.add(new INT<>(currentTxn, k, intKeys.get(k), v));
                 }
             } else {
-                // TODO check incomplete ext?
                 extWriteKeys.put(k, v);
             }
             intKeys.put(k, v);
@@ -70,51 +61,24 @@ public class OnlineChecker implements Checker {
         currentTxn.setCommitFrontier(commitFrontier);
         // re-check EXT
         lastCommittedTxn = currentTxn;
-        intKeys = new HashMap<>(opSize * 4 / 3 + 1);
+        HashSet<KeyType> writeKeys = new HashSet<>(currentTxn.getExtWriteKeys().keySet());
         for (int i = history.getCommitEntryIndex() + 1; i < txnEntries.size(); i++) {
-            // TODO if not timeout
-            if (txnEntries.get(i).getEntryType() == TransactionEntry.EntryType.COMMIT) {
-                lastCommittedTxn = txnEntries.get(i).getTransaction();
-                continue;
-            }
             Transaction<KeyType, ValueType> recheckTxn = txnEntries.get(i).getTransaction();
-            for (Operation<KeyType, ValueType> op : recheckTxn.getOperations()) {
-                KeyType k = op.getKey();
-                ValueType v = op.getValue();
-                if (op.getType() == OpType.read && !intKeys.containsKey(k)
-                        && currentTxn.getExtWriteKeys().containsKey(k)) {
-                    Transaction<KeyType, ValueType> previousTxn;
-                    if (lastCommittedTxn.getCommitFrontier().containsKey(k)) {
-                        previousTxn = lastCommittedTxn.getCommitFrontier().get(k);
-                    } else {
-                        previousTxn = history.getInitialTxn();
-                    }
-                    if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
-                        EXT<KeyType, ValueType> extViolation = new EXT<>(previousTxn,
-                                currentTxn, k, previousTxn.getExtWriteKeys().get(k), v);
-                        potentialViolations.add(extViolation);
-                        incompleteExts.put(new Operation<>(OpType.write, k, v), extViolation);
-                    } else {
-                        EXT<?, ?> extViolation = incompleteExts.get(op);
-                        if (extViolation != null) {
-                            incompleteExts.remove(op, extViolation);
-                            potentialViolations.remove(extViolation);
-                        }
-                    }
-                }
-                intKeys.put(k, v);
-            }
-            // TODO else
             if (txnEntries.get(i).getEntryType() == TransactionEntry.EntryType.START) {
-                continue;
-            }
-            commitFrontier = txnEntries.get(i).getTransaction().getCommitFrontier();
-            for (KeyType k : currentTxn.getExtWriteKeys().keySet()) {
-                if (!commitFrontier.containsKey(k)) {
+                recheckTxn.recheckExt(lastCommittedTxn, currentTxn, history.getInitialTxn());
+            } else {
+                lastCommittedTxn = recheckTxn;
+                writeKeys.removeIf(k -> recheckTxn.getExtWriteKeys().containsKey(k));
+                if (writeKeys.isEmpty()) {
+                    break;
+                }
+                commitFrontier = recheckTxn.getCommitFrontier();
+                for (KeyType k : writeKeys) {
                     commitFrontier.put(k, currentTxn);
                 }
             }
         }
+        timer.schedule(new MarkTimeoutTask(currentTxn), Arg.TIMEOUT_DELAY);
         return violations;
     }
 

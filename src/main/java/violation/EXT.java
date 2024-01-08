@@ -5,10 +5,10 @@ import history.transaction.Operation;
 import history.transaction.Transaction;
 
 public class EXT<KeyType, ValueType> extends Violation {
-    private final Transaction<KeyType, ValueType> formerTxn;
+    private Transaction<KeyType, ValueType> formerTxn;
     private final Transaction<KeyType, ValueType> latterTxn;
     private final KeyType key;
-    private final ValueType formerValue;
+    private ValueType formerValue;
     private final ValueType latterValue;
     private Transaction<KeyType, ValueType> writeLatterValueTxn;
 
@@ -57,19 +57,28 @@ public class EXT<KeyType, ValueType> extends Violation {
         } else {
             s3 = writeLatterValueTxn.toString();
         }
-        return s1 + "{" +
+        String result = s1 + "{" +
                 "formerTxn=" + s2 +
                 ", latterTxn=" + latterTxn +
                 ", key=" + key +
                 ", formerValue=" + formerValue +
-                ", latterValue=" + latterValue +
-                ", writeLatterValueTxn=" + s3 +
-                ", extType=" + extType +
-                '}';
+                ", latterValue=" + latterValue;
+        if ("online".equals(Arg.MODE)) {
+            result += '}';
+        } else {
+            result += ", writeLatterValueTxn=" + s3 +
+                    ", extType=" + extType +
+                    '}';
+        }
+        return result;
     }
 
     public Transaction<KeyType, ValueType> getFormerTxn() {
         return formerTxn;
+    }
+
+    public void setFormerTxn(Transaction<KeyType, ValueType> formerTxn) {
+        this.formerTxn = formerTxn;
     }
 
     public Transaction<KeyType, ValueType> getLatterTxn() {
@@ -82,6 +91,10 @@ public class EXT<KeyType, ValueType> extends Violation {
 
     public ValueType getFormerValue() {
         return formerValue;
+    }
+
+    public void setFormerValue(ValueType formerValue) {
+        this.formerValue = formerValue;
     }
 
     public ValueType getLatterValue() {

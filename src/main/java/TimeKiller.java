@@ -62,6 +62,8 @@ public class TimeKiller {
         options.addOption(Option.builder().longOpt("fix").desc("fix violations if found").build());
         options.addOption(Option.builder().longOpt("num_per_gc").hasArg(true).type(Integer.class)
                 .desc("the number of checked transactions for each gc [default: 20000]").build());
+        options.addOption(Option.builder().longOpt("timeout_delay").hasArg(true).type(Long.class)
+                .desc("transaction timeout delay of online checking in millisecond [default: 5000]").build());
         try {
             CommandLine commandLine = parser.parse(options, args);
             if (commandLine.hasOption("h")) {
@@ -84,6 +86,9 @@ public class TimeKiller {
             }
             if (commandLine.hasOption("num_per_gc")) {
                 Arg.NUM_PER_GC = Integer.parseInt(commandLine.getOptionValue("num_per_gc"));
+            }
+            if (commandLine.hasOption("timeout_delay")) {
+                Arg.TIMEOUT_DELAY = Long.parseLong(commandLine.getOptionValue("timeout_delay"));
             }
         } catch (ParseException e) {
             printAndExit(options);

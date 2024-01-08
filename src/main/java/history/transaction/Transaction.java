@@ -1,9 +1,12 @@
 package history.transaction;
 
 import com.alibaba.fastjson.annotation.JSONField;
+import info.Arg;
+import violation.EXT;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
 
 public class Transaction<KeyType, ValueType> {
@@ -23,6 +26,12 @@ public class Transaction<KeyType, ValueType> {
 
     @JSONField(serialize = false)
     private HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier;
+
+    @JSONField(serialize = false)
+    private boolean timeout;
+
+    @JSONField(serialize = false)
+    private List<EXT<KeyType, ValueType>> extViolations;
 
     public String getTransactionId() {
         return transactionId;
@@ -64,6 +73,10 @@ public class Transaction<KeyType, ValueType> {
         this.commitFrontier = commitFrontier;
     }
 
+    public List<EXT<KeyType, ValueType>> getExtViolations() {
+        return extViolations;
+    }
+
     public Transaction(String transactionId, String sessionId, ArrayList<Operation<KeyType, ValueType>> operations,
                        HybridLogicalClock startTimestamp, HybridLogicalClock commitTimestamp) {
         this.transactionId = transactionId;
@@ -71,6 +84,10 @@ public class Transaction<KeyType, ValueType> {
         this.operations = operations;
         this.startTimestamp = startTimestamp;
         this.commitTimestamp = commitTimestamp;
+        if ("online".equals(Arg.MODE)) {
+            timeout = false;
+            extViolations = new ArrayList<>();
+        }
     }
 
     @Override
@@ -96,5 +113,51 @@ public class Transaction<KeyType, ValueType> {
                 ", startTs=" + startTimestamp +
                 ", commitTs=" + commitTimestamp +
                 '}';
+    }
+
+    public synchronized void markTimeout() {
+        timeout = true;
+        for (EXT<KeyType, ValueType> extViolation : extViolations) {
+            System.out.println(extViolation);
+        }
+    }
+
+    public synchronized void recheckExt(Transaction<KeyType, ValueType> lastCommittedTxn,
+                                        Transaction<KeyType, ValueType> currentTxn,
+                                        Transaction<KeyType, ValueType> initialTxn) {
+        if (timeout) {
+            return;
+        }
+        HashMap<KeyType, ValueType> intKeys = new HashMap<>(operations.size() * 4 / 3 + 1);
+        for (Operation<KeyType, ValueType> op : operations) {
+            KeyType k = op.getKey();
+            ValueType v = op.getValue();
+            if (op.getType() == OpType.read && !intKeys.containsKey(k)
+                    && currentTxn.getExtWriteKeys().containsKey(k)) {
+                Transaction<KeyType, ValueType> previousTxn = lastCommittedTxn
+                        .getCommitFrontier().getOrDefault(k, initialTxn);
+                if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
+                    // add a new EXT violation or update an existing EXT violation
+                    boolean addANewOne = true;
+                    for (EXT<KeyType, ValueType> extViolation : extViolations) {
+                        if (extViolation.getKey().equals(k)) {
+                            if (!extViolation.getFormerTxn().equals(previousTxn)) {
+                                extViolation.setFormerTxn(previousTxn);
+                                extViolation.setFormerValue(previousTxn.getExtWriteKeys().get(k));
+                            }
+                            addANewOne = false;
+                            break;
+                        }
+                    }
+                    if (addANewOne) {
+                        extViolations.add(new EXT<>(previousTxn, this, k, previousTxn.getExtWriteKeys().get(k), v));
+                    }
+                } else {
+                    // remove a potential EXT violation
+                    extViolations.removeIf(extViolation -> extViolation.getKey().equals(k));
+                }
+            }
+            intKeys.put(k, v);
+        }
     }
 }

@@ -8,4 +8,5 @@ public class Arg {
     public static String MODE = "fast";
     public static boolean FIX = false;
     public static int NUM_PER_GC = 20000;
+    public static long TIMEOUT_DELAY = 5000L;
 }
