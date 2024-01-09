@@ -2,7 +2,6 @@ package reader;
 
 import history.transaction.*;
 import info.Arg;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONArray;
 import history.History;
@@ -21,7 +20,7 @@ public class OnlineReader implements Reader<Long, Long> {
     private long maxKey = 1000;
 
     @Override
-    public Pair<History<Long, Long>, ArrayList<Violation>> read(String jsonString) {
+    public Pair<History<Long, Long>, ArrayList<Violation>> read(Object jsonObj) {
         ArrayList<TransactionEntry<Long, Long>> txnEntries;
         ArrayList<Violation> violations = new ArrayList<>();
         if (history == null) {
@@ -37,7 +36,7 @@ public class OnlineReader implements Reader<Long, Long> {
         }
         long lastMaxKey = maxKey;
         txnEntries = history.getTransactionEntries();
-        JSONObject jsonObject = JSON.parseObject(jsonString);
+        JSONObject jsonObject = (JSONObject) jsonObj;
         String sid = jsonObject.getString("sid");
         String txnId = jsonObject.getString("tid");
         JSONObject jsonStartTs = jsonObject.getJSONObject("sts");
@@ -79,7 +78,7 @@ public class OnlineReader implements Reader<Long, Long> {
         TransactionEntry<Long, Long> startEntry =
                 new TransactionEntry<>(txn, TransactionEntry.EntryType.START, startTs);
         TransactionEntry<Long, Long> commitEntry =
-                new TransactionEntry<>(txn, TransactionEntry.EntryType.COMMIT, startTs);
+                new TransactionEntry<>(txn, TransactionEntry.EntryType.COMMIT, commitTs);
         HashSet<Transaction<Long, Long>> checkedTxns = new HashSet<>();
         boolean commitAdded = false;
         for (int j = txnEntries.size() - 1; j >= 0; j--) {

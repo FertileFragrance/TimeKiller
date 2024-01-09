@@ -25,6 +25,7 @@ public class OnlineChecker implements Checker {
         for (int i = history.getStartEntryIndex() - 1; i >= 0; i--) {
             if (txnEntries.get(i).getEntryType() == TransactionEntry.EntryType.COMMIT) {
                 lastCommittedTxn = txnEntries.get(i).getTransaction();
+                break;
             }
         }
         assert lastCommittedTxn != null;
@@ -55,6 +56,13 @@ public class OnlineChecker implements Checker {
         currentTxn.setExtWriteKeys(extWriteKeys);
         HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier =
                 new HashMap<>(lastCommittedTxn.getCommitFrontier());
+        for (int i = history.getStartEntryIndex() + 1; i < history.getCommitEntryIndex(); i++) {
+            if (txnEntries.get(i).getEntryType() == TransactionEntry.EntryType.COMMIT) {
+                for (KeyType k : txnEntries.get(i).getTransaction().getExtWriteKeys().keySet()) {
+                    commitFrontier.put(k, txnEntries.get(i).getTransaction());
+                }
+            }
+        }
         for (KeyType k : extWriteKeys.keySet()) {
             commitFrontier.put(k, currentTxn);
         }

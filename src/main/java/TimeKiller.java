@@ -1,4 +1,8 @@
 import checker.OnlineChecker;
+import checker.online.HttpRequest;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
+import com.sun.net.httpserver.HttpServer;
 import info.*;
 import checker.Checker;
 import checker.FastChecker;
@@ -12,14 +16,19 @@ import org.apache.commons.lang3.tuple.Pair;
 import reader.JSONFileFastReader;
 import reader.Reader;
 
-import java.io.File;
+import java.io.*;
+import java.net.InetSocketAddress;
 import java.util.ArrayList;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class TimeKiller {
     private static Reader<?, ?> reader;
     private static Checker checker;
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         Stats.TOTAL_START = System.currentTimeMillis();
 
         setup(args);
@@ -27,7 +36,7 @@ public class TimeKiller {
 
         if ("online".equals(Arg.MODE)) {
             runOnlineMode();
-            return;
+            System.exit(0);
         }
 
         Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(Arg.FILEPATH);
@@ -51,7 +60,7 @@ public class TimeKiller {
         CommandLineParser parser = new DefaultParser();
         Options options = new Options();
         options.addOption(Option.builder("h").longOpt("help").desc("print usage help and exit").build());
-        options.addOption(Option.builder().longOpt("history_path").required().hasArg(true).type(String.class)
+        options.addOption(Option.builder().longOpt("history_path").hasArg(true).type(String.class)
                 .desc("the filepath of history in json format").build());
         options.addOption(Option.builder().longOpt("enable_session").hasArg(true).type(Boolean.class)
                 .desc("whether to check the SESSION axiom using timestamps [default: true]").build());
@@ -62,6 +71,8 @@ public class TimeKiller {
         options.addOption(Option.builder().longOpt("fix").desc("fix violations if found").build());
         options.addOption(Option.builder().longOpt("num_per_gc").hasArg(true).type(Integer.class)
                 .desc("the number of checked transactions for each gc [default: 20000]").build());
+        options.addOption(Option.builder().longOpt("port").hasArg(true).type(Integer.class)
+                .desc("HTTP request port for online checking [default: 23333]").build());
         options.addOption(Option.builder().longOpt("timeout_delay").hasArg(true).type(Long.class)
                 .desc("transaction timeout delay of online checking in millisecond [default: 5000]").build());
         try {
@@ -74,7 +85,11 @@ public class TimeKiller {
                 System.out.println("Arg for --mode is invalid");
                 printAndExit(options);
             }
-            Arg.FILEPATH = commandLine.getOptionValue("history_path");
+            Arg.FILEPATH = commandLine.getOptionValue("history_path", "default");
+            if ("default".equals(Arg.FILEPATH) && !"online".equals(Arg.MODE)) {
+                System.out.println("--history_path is required for fast or gc mode");
+                printAndExit(options);
+            }
             System.out.println("Checking " + Arg.FILEPATH);
             Arg.ENABLE_SESSION = Boolean.parseBoolean(commandLine.getOptionValue("enable_session", "true"));
             Arg.INITIAL_VALUE = commandLine.getOptionValue("initial_value", null);
@@ -86,6 +101,9 @@ public class TimeKiller {
             }
             if (commandLine.hasOption("num_per_gc")) {
                 Arg.NUM_PER_GC = Integer.parseInt(commandLine.getOptionValue("num_per_gc"));
+            }
+            if (commandLine.hasOption("port")) {
+                Arg.PORT = Integer.parseInt(commandLine.getOptionValue("port"));
             }
             if (commandLine.hasOption("timeout_delay")) {
                 Arg.TIMEOUT_DELAY = Long.parseLong(commandLine.getOptionValue("timeout_delay"));
@@ -132,6 +150,11 @@ public class TimeKiller {
     }
 
     private static void decideReaderAndChecker() {
+        if ("online".equals(Arg.MODE)) {
+            reader = new OnlineReader();
+            checker = new OnlineChecker();
+            return;
+        }
         File file = new File(Arg.FILEPATH);
         if (!file.exists() || file.isDirectory()) {
             System.err.println("Invalid history path");
@@ -146,9 +169,6 @@ public class TimeKiller {
             } else if ("gc".equals(Arg.MODE)) {
                 reader = new JSONFileGcReader();
                 checker = new GcChecker();
-            } else {
-                reader = new OnlineReader();
-                checker = new OnlineChecker();
             }
         }
     }
@@ -183,7 +203,62 @@ public class TimeKiller {
         checker.saveToFile(history);
     }
 
-    private static void runOnlineMode() {
-        // TODO
+    private static void runOnlineMode() throws IOException {
+        // init history
+        reader.read(null);
+        // start HTTP server
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        BlockingQueue<HttpRequest> requestQueue = new LinkedBlockingQueue<>();
+        HttpServer server = HttpServer.create(new InetSocketAddress(Arg.PORT), 0);
+        server.createContext("/check", exchange -> {
+            if (!"POST".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(405, -1);
+                return;
+            }
+            try (InputStream requestBody = exchange.getRequestBody()) {
+                ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+                byte[] buffer = new byte[1024];
+                int length;
+                while ((length = requestBody.read(buffer)) != -1) {
+                    bytes.write(buffer, 0, length);
+                }
+                HttpRequest request = new HttpRequest(bytes.toString());
+                requestQueue.put(request);
+                requestBody.close();
+                String response = "Request received and added to the queue";
+                exchange.sendResponseHeaders(200, response.length());
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes());
+                exchange.close();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        });
+        server.setExecutor(executorService);
+        server.start();
+        System.out.println("Server started on port " + Arg.PORT);
+        // handle HTTP request
+        while (true) {
+            try {
+                HttpRequest request = requestQueue.take();
+                if ("STOP".equals(request.getContent())) {
+                    server.stop(1000);
+                    executorService.shutdownNow();
+                    break;
+                }
+                JSONArray jsonArray = JSONArray.parseArray(request.getContent());
+                for (int i = 0; i < jsonArray.size(); i++) {
+                    JSONObject jsonObject = jsonArray.getJSONObject(i);
+                    Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(jsonObject);
+                    History<?, ?> history = historyAndViolations.getLeft();
+                    ArrayList<Violation> violations = historyAndViolations.getRight();
+                    violations.forEach(System.out::println);
+                    violations = checker.check(history);
+                    violations.forEach(System.out::println);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

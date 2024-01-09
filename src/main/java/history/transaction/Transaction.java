@@ -117,9 +117,7 @@ public class Transaction<KeyType, ValueType> {
 
     public synchronized void markTimeout() {
         timeout = true;
-        for (EXT<KeyType, ValueType> extViolation : extViolations) {
-            System.out.println(extViolation);
-        }
+        extViolations.forEach(System.out::println);
     }
 
     public synchronized void recheckExt(Transaction<KeyType, ValueType> lastCommittedTxn,

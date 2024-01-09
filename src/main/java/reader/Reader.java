@@ -7,5 +7,5 @@ import org.apache.commons.lang3.tuple.Pair;
 import java.util.ArrayList;
 
 public interface Reader<KeyType, ValueType> {
-    Pair<History<KeyType, ValueType>, ArrayList<Violation>> read(String filepathOrJsonString);
+    Pair<History<KeyType, ValueType>, ArrayList<Violation>> read(Object filepathOrJsonObj);
 }

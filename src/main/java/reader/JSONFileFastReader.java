@@ -20,7 +20,7 @@ import java.util.HashMap;
 
 public class JSONFileFastReader implements Reader<Long, Long> {
     @Override
-    public Pair<History<Long, Long>, ArrayList<Violation>> read(String filepath) {
+    public Pair<History<Long, Long>, ArrayList<Violation>> read(Object filepath) {
         Stats.LOADING_START = System.currentTimeMillis();
 
         ArrayList<Transaction<Long, Long>> txns = null;
@@ -30,7 +30,7 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         long readOpCount = 0L;
         long writeOpCount = 0L;
         try {
-            JSONReader jsonReader = new JSONReader(new FileReader(filepath));
+            JSONReader jsonReader = new JSONReader(new FileReader((String) filepath));
             JSONArray jsonArray = (JSONArray) jsonReader.readObject();
             int size = jsonArray.size();
             txns = new ArrayList<>(size + 1);

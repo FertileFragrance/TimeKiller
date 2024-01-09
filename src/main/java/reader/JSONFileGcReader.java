@@ -17,7 +17,7 @@ import java.util.HashMap;
 
 public class JSONFileGcReader implements Reader<Long, Long> {
     @Override
-    public Pair<History<Long, Long>, ArrayList<Violation>> read(String filepath) {
+    public Pair<History<Long, Long>, ArrayList<Violation>> read(Object filepath) {
         Stats.LOADING_START = System.currentTimeMillis();
 
         ArrayList<TransactionEntry<Long, Long>> txnEntries = null;
@@ -27,7 +27,7 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         long readOpCount = 0L;
         long writeOpCount = 0L;
         try {
-            JSONReader jsonReader = new JSONReader(new FileReader(filepath));
+            JSONReader jsonReader = new JSONReader(new FileReader((String) filepath));
             JSONArray jsonArray = (JSONArray) jsonReader.readObject();
             int size = jsonArray.size();
             txnEntries = new ArrayList<>(2 * size + 2);
