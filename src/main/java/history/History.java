@@ -4,6 +4,7 @@ import history.transaction.Transaction;
 import history.transaction.TransactionEntry;
 import info.Arg;
 import info.Stats;
+import org.apache.commons.lang3.tuple.Pair;
 
 import java.util.*;
 
@@ -15,8 +16,11 @@ public class History<KeyType, ValueType> {
     private final HashMap<KeyType, Transaction<KeyType, ValueType>> frontier;
     private final Transaction<KeyType, ValueType> initialTxn;
 
+    private final ArrayList<Pair<String, Boolean>> txnIdWhetherGc = new ArrayList<>(2);
     private int startEntryIndex;
     private int commitEntryIndex;
+    private int startEntryIndexInMemory;
+    private int commitEntryIndexInMemory;
 
     public History(ArrayList<Transaction<KeyType, ValueType>> transactions, int keyNumber,
                    ArrayList<TransactionEntry<KeyType, ValueType>> transactionEntries,
@@ -39,6 +43,8 @@ public class History<KeyType, ValueType> {
         } else {
             // Arg.MODE is online
             this.initialTxn = this.transactionEntries.get(0).getTransaction();
+            txnIdWhetherGc.add(Pair.of("initial-s", false));
+            txnIdWhetherGc.add(Pair.of("initial-c", false));
         }
 
         Stats.SORTING_END = System.currentTimeMillis();
@@ -93,6 +99,10 @@ public class History<KeyType, ValueType> {
         return initialTxn;
     }
 
+    public ArrayList<Pair<String, Boolean>> getTxnIdWhetherGc() {
+        return txnIdWhetherGc;
+    }
+
     public int getStartEntryIndex() {
         return startEntryIndex;
     }
@@ -107,5 +117,21 @@ public class History<KeyType, ValueType> {
 
     public void setCommitEntryIndex(int commitEntryIndex) {
         this.commitEntryIndex = commitEntryIndex;
+    }
+
+    public int getStartEntryIndexInMemory() {
+        return startEntryIndexInMemory;
+    }
+
+    public void setStartEntryIndexInMemory(int startEntryIndexInMemory) {
+        this.startEntryIndexInMemory = startEntryIndexInMemory;
+    }
+
+    public int getCommitEntryIndexInMemory() {
+        return commitEntryIndexInMemory;
+    }
+
+    public void setCommitEntryIndexInMemory(int commitEntryIndexInMemory) {
+        this.commitEntryIndexInMemory = commitEntryIndexInMemory;
     }
 }

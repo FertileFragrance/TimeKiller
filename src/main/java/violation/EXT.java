@@ -4,7 +4,9 @@ import info.Arg;
 import history.transaction.Operation;
 import history.transaction.Transaction;
 
-public class EXT<KeyType, ValueType> extends Violation {
+import java.io.Serializable;
+
+public class EXT<KeyType, ValueType> extends Violation implements Serializable {
     private Transaction<KeyType, ValueType> formerTxn;
     private final Transaction<KeyType, ValueType> latterTxn;
     private final KeyType key;
@@ -12,7 +14,7 @@ public class EXT<KeyType, ValueType> extends Violation {
     private final ValueType latterValue;
     private Transaction<KeyType, ValueType> writeLatterValueTxn;
 
-    public enum EXTType {
+    public enum EXTType implements Serializable {
         NEVER, BEFORE, UNCOMMITTED, AFTER
     }
 

@@ -10,6 +10,9 @@ import violation.NOCONFLICT;
 import violation.SESSION;
 import violation.Violation;
 
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,6 +21,8 @@ public class OnlineReader implements Reader<Long, Long> {
     private History<Long, Long> history;
     private final HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
     private long maxKey = 1000;
+
+    private final String cacheDir = System.getProperty("user.dir") + "/.cache/TimeKiller/";
 
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(Object jsonObj) {
@@ -32,10 +37,15 @@ public class OnlineReader implements Reader<Long, Long> {
                     initialTxn.getCommitTimestamp()));
             history = new History<>(null, initialTxn.getExtWriteKeys().size(),
                     txnEntries, null, null);
+            history.setStartEntryIndex(0);
+            history.setStartEntryIndexInMemory(0);
+            history.setCommitEntryIndex(1);
+            history.setCommitEntryIndexInMemory(1);
             return Pair.of(history, violations);
         }
         long lastMaxKey = maxKey;
         txnEntries = history.getTransactionEntries();
+        ArrayList<Pair<String, Boolean>> txnIdWhetherGc = history.getTxnIdWhetherGc();
         JSONObject jsonObject = (JSONObject) jsonObj;
         String sid = jsonObject.getString("sid");
         String txnId = jsonObject.getString("tid");
@@ -81,12 +91,26 @@ public class OnlineReader implements Reader<Long, Long> {
                 new TransactionEntry<>(txn, TransactionEntry.EntryType.COMMIT, commitTs);
         HashSet<Transaction<Long, Long>> checkedTxns = new HashSet<>();
         boolean commitAdded = false;
-        for (int j = txnEntries.size() - 1; j >= 0; j--) {
-            TransactionEntry<Long, Long> existingEntry = txnEntries.get(j);
+        int inMemoryIndex = txnEntries.size() - 1;
+        for (int j = txnIdWhetherGc.size() - 1; j >= 0; j--) {
+            TransactionEntry<Long, Long> existingEntry = null;
+            if (!txnIdWhetherGc.get(j).getRight()) {
+                existingEntry = txnEntries.get(inMemoryIndex);
+            } else {
+                try (FileInputStream fileIn = new FileInputStream(cacheDir + txnIdWhetherGc.get(j).getLeft());
+                     ObjectInputStream objIn = new ObjectInputStream(fileIn)) {
+                    existingEntry = (TransactionEntry<Long, Long>) objIn.readObject();
+                } catch (IOException | ClassNotFoundException e) {
+                    e.printStackTrace();
+                }
+            }
+            assert existingEntry != null;
             if (commitTs.compareTo(existingEntry.getTimestamp()) >= 0 && !commitAdded) {
-                txnEntries.add(j + 1, commitEntry);
+                txnIdWhetherGc.add(j + 1, Pair.of(txnId, false));
+                txnEntries.add(inMemoryIndex + 1, commitEntry);
                 commitAdded = true;
                 history.setCommitEntryIndex(j + 2);
+                history.setCommitEntryIndexInMemory(inMemoryIndex + 2);
             }
             // check NOCONFLICT
             if (startTs.compareTo(existingEntry.getTimestamp()) <= 0
@@ -104,9 +128,14 @@ public class OnlineReader implements Reader<Long, Long> {
                 checkedTxns.add(existingEntry.getTransaction());
             }
             if (startTs.compareTo(existingEntry.getTimestamp()) >= 0) {
-                txnEntries.add(j + 1, startEntry);
+                txnIdWhetherGc.add(j + 1, Pair.of(txnId, false));
+                txnEntries.add(inMemoryIndex + 1, startEntry);
                 history.setStartEntryIndex(j + 1);
+                history.setStartEntryIndexInMemory(inMemoryIndex + 1);
                 break;
+            }
+            if (!txnIdWhetherGc.get(j).getRight()) {
+                inMemoryIndex--;
             }
         }
         updateInitialTxn(lastMaxKey, txnEntries.get(0).getTransaction());

@@ -1,4 +1,5 @@
 import checker.OnlineChecker;
+import checker.online.GcTask;
 import checker.online.HttpRequest;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -8,6 +9,7 @@ import checker.Checker;
 import checker.FastChecker;
 import checker.GcChecker;
 import history.History;
+import org.apache.commons.io.FileUtils;
 import reader.JSONFileGcReader;
 import reader.OnlineReader;
 import violation.Violation;
@@ -39,6 +41,7 @@ public class TimeKiller {
             System.exit(0);
         }
 
+        System.out.println("Checking " + Arg.FILEPATH);
         Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(Arg.FILEPATH);
         History<?, ?> history = historyAndViolations.getLeft();
         ArrayList<Violation> sessionViolations = historyAndViolations.getRight();
@@ -75,6 +78,8 @@ public class TimeKiller {
                 .desc("HTTP request port for online checking [default: 23333]").build());
         options.addOption(Option.builder().longOpt("timeout_delay").hasArg(true).type(Long.class)
                 .desc("transaction timeout delay of online checking in millisecond [default: 5000]").build());
+        options.addOption(Option.builder().longOpt("max_num_each_gc").hasArg(true).type(Integer.class)
+                .desc("the maximum number of transactions for each online gc [default: 100]").build());
         try {
             CommandLine commandLine = parser.parse(options, args);
             if (commandLine.hasOption("h")) {
@@ -90,7 +95,6 @@ public class TimeKiller {
                 System.out.println("--history_path is required for fast or gc mode");
                 printAndExit(options);
             }
-            System.out.println("Checking " + Arg.FILEPATH);
             Arg.ENABLE_SESSION = Boolean.parseBoolean(commandLine.getOptionValue("enable_session", "true"));
             Arg.INITIAL_VALUE = commandLine.getOptionValue("initial_value", null);
             if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
@@ -107,6 +111,9 @@ public class TimeKiller {
             }
             if (commandLine.hasOption("timeout_delay")) {
                 Arg.TIMEOUT_DELAY = Long.parseLong(commandLine.getOptionValue("timeout_delay"));
+            }
+            if (commandLine.hasOption("max_num_each_gc")) {
+                Arg.MAX_NUM_EACH_GC = Integer.parseInt(commandLine.getOptionValue("max_num_each_gc"));
             }
         } catch (ParseException e) {
             printAndExit(options);
@@ -204,8 +211,21 @@ public class TimeKiller {
     }
 
     private static void runOnlineMode() throws IOException {
+        // create cache directory
+        String programPath = System.getProperty("user.dir");
+        File cacheDir = new File(programPath + "/.cache/TimeKiller/");
+        if (cacheDir.exists()) {
+            FileUtils.deleteDirectory(cacheDir);
+        }
+        if (!cacheDir.mkdirs()) {
+            System.err.println("Create cache directory error!");
+            System.exit(1);
+        }
         // init history
-        reader.read(null);
+        History<?, ?> history = reader.read(null).getLeft();
+        // set GC
+        Thread gcThread = new Thread(new GcTask((OnlineChecker) checker, history));
+        gcThread.start();
         // start HTTP server
         ExecutorService executorService = Executors.newFixedThreadPool(2);
         BlockingQueue<HttpRequest> requestQueue = new LinkedBlockingQueue<>();
@@ -215,7 +235,7 @@ public class TimeKiller {
                 exchange.sendResponseHeaders(405, -1);
                 return;
             }
-            try (InputStream requestBody = exchange.getRequestBody()) {
+            try (InputStream requestBody = exchange.getRequestBody(); OutputStream os = exchange.getResponseBody()) {
                 ByteArrayOutputStream bytes = new ByteArrayOutputStream();
                 byte[] buffer = new byte[1024];
                 int length;
@@ -224,12 +244,9 @@ public class TimeKiller {
                 }
                 HttpRequest request = new HttpRequest(bytes.toString());
                 requestQueue.put(request);
-                requestBody.close();
                 String response = "Request received and added to the queue";
                 exchange.sendResponseHeaders(200, response.length());
-                OutputStream os = exchange.getResponseBody();
                 os.write(response.getBytes());
-                exchange.close();
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -244,17 +261,22 @@ public class TimeKiller {
                 if ("STOP".equals(request.getContent())) {
                     server.stop(1000);
                     executorService.shutdownNow();
+                    FileUtils.deleteDirectory(cacheDir);
                     break;
                 }
                 JSONArray jsonArray = JSONArray.parseArray(request.getContent());
                 for (int i = 0; i < jsonArray.size(); i++) {
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
-                    Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(jsonObject);
-                    History<?, ?> history = historyAndViolations.getLeft();
-                    ArrayList<Violation> violations = historyAndViolations.getRight();
-                    violations.forEach(System.out::println);
-                    violations = checker.check(history);
-                    violations.forEach(System.out::println);
+                    GcTask.gcLock.lock();
+                    try {
+                        Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(jsonObject);
+                        ArrayList<Violation> violations = historyAndViolations.getRight();
+                        violations.forEach(System.out::println);
+                        violations = checker.check(history);
+                        violations.forEach(System.out::println);
+                    } finally {
+                        GcTask.gcLock.unlock();
+                    }
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();

@@ -4,12 +4,13 @@ import com.alibaba.fastjson.annotation.JSONField;
 import info.Arg;
 import violation.EXT;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-public class Transaction<KeyType, ValueType> {
+public class Transaction<KeyType, ValueType> implements Serializable {
     @JSONField(name = "tid")
     private final String transactionId;
     @JSONField(name = "sid")
@@ -71,6 +72,10 @@ public class Transaction<KeyType, ValueType> {
 
     public void setCommitFrontier(HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier) {
         this.commitFrontier = commitFrontier;
+    }
+
+    public boolean isTimeout() {
+        return timeout;
     }
 
     public List<EXT<KeyType, ValueType>> getExtViolations() {

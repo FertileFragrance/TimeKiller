@@ -2,7 +2,9 @@ package history.transaction;
 
 import com.alibaba.fastjson.annotation.JSONField;
 
-public class HybridLogicalClock implements Comparable<HybridLogicalClock> {
+import java.io.Serializable;
+
+public class HybridLogicalClock implements Comparable<HybridLogicalClock>, Serializable {
     @JSONField(name = "p")
     private final Long physical;
     @JSONField(name = "l")

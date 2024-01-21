@@ -2,9 +2,10 @@ package history.transaction;
 
 import com.alibaba.fastjson.annotation.JSONField;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class Operation<KeyType, ValueType> {
+public class Operation<KeyType, ValueType> implements Serializable {
     @JSONField(name = "t")
     private final OpType type;
     @JSONField(name = "k")

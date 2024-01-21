@@ -1,8 +1,10 @@
 package history.transaction;
 
+import java.io.Serializable;
 import java.util.Objects;
 
-public class TransactionEntry<KeyType, ValueType> implements Comparable<TransactionEntry<KeyType, ValueType>> {
+public class TransactionEntry<KeyType, ValueType> implements Comparable<TransactionEntry<KeyType, ValueType>>,
+        Serializable {
     @Override
     public int compareTo(TransactionEntry o) {
         int diff = timestamp.compareTo(o.timestamp);
@@ -20,7 +22,7 @@ public class TransactionEntry<KeyType, ValueType> implements Comparable<Transact
 
     private final Transaction<KeyType, ValueType> transaction;
 
-    public enum EntryType {
+    public enum EntryType implements Serializable {
         START, COMMIT
     }
 

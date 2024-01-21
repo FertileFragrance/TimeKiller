@@ -1,5 +1,7 @@
 package history.transaction;
 
-public enum OpType {
+import java.io.Serializable;
+
+public enum OpType implements Serializable {
     write, read
 }
