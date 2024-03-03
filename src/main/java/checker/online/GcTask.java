@@ -23,9 +23,16 @@ public class GcTask implements Runnable {
     public void run() {
         while (true) {
             Pair<ArrayList<Integer>, ArrayList<Integer>> allAndInMemoryIndexes = onlineChecker.preGc(history);
-            int gcSize = onlineChecker.serialize(allAndInMemoryIndexes, history);
-            onlineChecker.doGc(allAndInMemoryIndexes, history, gcSize);
+//            int gcSize = onlineChecker.serialize(allAndInMemoryIndexes, history);
+//            onlineChecker.doGc(allAndInMemoryIndexes, history, gcSize);
+            int size = Math.max(allAndInMemoryIndexes.getLeft().size() - 50, 0);
+            onlineChecker.doGc(allAndInMemoryIndexes, history, size);
             System.gc();
+            try {
+                Thread.sleep(5000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

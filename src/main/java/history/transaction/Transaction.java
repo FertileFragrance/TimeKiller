@@ -26,6 +26,9 @@ public class Transaction<KeyType, ValueType> implements Serializable {
     private HashMap<KeyType, ValueType> extWriteKeys;
 
     @JSONField(serialize = false)
+    private Long realtimeTimestamp;
+
+    @JSONField(serialize = false)
     private HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier;
 
     @JSONField(serialize = false)
@@ -64,6 +67,14 @@ public class Transaction<KeyType, ValueType> implements Serializable {
 
     public void setExtWriteKeys(HashMap<KeyType, ValueType> extWriteKeys) {
         this.extWriteKeys = extWriteKeys;
+    }
+
+    public Long getRealtimeTimestamp() {
+        return realtimeTimestamp;
+    }
+
+    public void setRealtimeTimestamp(Long realtimeTimestamp) {
+        this.realtimeTimestamp = realtimeTimestamp;
     }
 
     public HashMap<KeyType, Transaction<KeyType, ValueType>> getCommitFrontier() {

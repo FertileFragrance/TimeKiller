@@ -10,5 +10,6 @@ public class Arg {
     public static int NUM_PER_GC = 20000;
     public static int PORT = 23333;
     public static long TIMEOUT_DELAY = 5000L;
-    public static int MAX_NUM_EACH_GC = 100;
+    public static int MAX_NUM_EACH_GC = 10000;
+    public static boolean USE_CTS_AS_RTTS = false;
 }

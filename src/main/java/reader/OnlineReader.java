@@ -53,6 +53,12 @@ public class OnlineReader implements Reader<Long, Long> {
         HybridLogicalClock startTs = new HybridLogicalClock(jsonStartTs.getLong("p"), jsonStartTs.getLong("l"));
         JSONObject jsonCommitTs = jsonObject.getJSONObject("cts");
         HybridLogicalClock commitTs = new HybridLogicalClock(jsonCommitTs.getLong("p"), jsonCommitTs.getLong("l"));
+        Long realtimeTs;
+        if (Arg.USE_CTS_AS_RTTS) {
+            realtimeTs = commitTs.getPhysical();
+        } else {
+            realtimeTs = jsonObject.getLong("rtts");
+        }
         if (startTs.compareTo(commitTs) > 0) {
             throw new RuntimeException("!!! start_ts > commit_ts !!!");
         }
@@ -77,6 +83,7 @@ public class OnlineReader implements Reader<Long, Long> {
             }
         }
         Transaction<Long, Long> txn = new Transaction<>(txnId, sid, ops, startTs, commitTs);
+        txn.setRealtimeTimestamp(realtimeTs);
         boolean violateSession = false;
         if (Arg.ENABLE_SESSION && lastInSession.containsKey(sid) &&
                 lastInSession.get(sid).getCommitTimestamp().compareTo(txn.getStartTimestamp()) > 0) {

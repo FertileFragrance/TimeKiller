@@ -2,24 +2,45 @@ package checker;
 
 import checker.online.GcTask;
 import checker.online.MarkTimeoutTask;
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Output;
 import history.History;
-import history.transaction.OpType;
-import history.transaction.Operation;
-import history.transaction.Transaction;
-import history.transaction.TransactionEntry;
+import history.transaction.*;
 import info.Arg;
 import org.apache.commons.lang3.tuple.Pair;
 import violation.EXT;
 import violation.INT;
 import violation.Violation;
+import violation.ViolationType;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.zip.GZIPOutputStream;
 
 public class OnlineChecker implements Checker {
     private final Timer timer = new Timer();
 
     private final String cacheDir = System.getProperty("user.dir") + "/.cache/TimeKiller/";
+    private final Kryo kryo;
+
+    public OnlineChecker() {
+        kryo = new Kryo();
+        kryo.register(HashSet.class);
+        kryo.register(TransactionEntry.class);
+        kryo.register(Transaction.class);
+        kryo.register(TransactionEntry.EntryType.class);
+        kryo.register(HybridLogicalClock.class);
+        kryo.register(Operation.class);
+        kryo.register(OpType.class);
+        kryo.register(HashMap.class);
+        kryo.register(ArrayList.class);
+        kryo.register(EXT.class);
+        kryo.register(EXT.EXTType.class);
+        kryo.register(ViolationType.class);
+        kryo.setReferences(true);
+    }
 
     @Override
     public <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history) {
@@ -221,9 +242,64 @@ public class OnlineChecker implements Checker {
         ArrayList<Integer> inMemoryIndexes = allAndInMemoryIndexes.getRight();
         ArrayList<TransactionEntry<KeyType, ValueType>> txnEntries = history.getTransactionEntries();
         HashSet<TransactionEntry<KeyType, ValueType>> toRemove = new HashSet<>(gcSize * 4 / 3 + 1);
+//        for (int i = 0; i < gcSize; i++) {
+//            TransactionEntry<KeyType, ValueType> entry = txnEntries.get(inMemoryIndexes.get(i));
+//            toRemove.add(entry);
+//            String t;
+//            if (entry.getEntryType() == TransactionEntry.EntryType.START) {
+//                t = "-s";
+//            } else {
+//                t = "-c";
+//            }
+//            history.getTxnIdWhetherGc().set(allIndexes.get(i), Pair.of(entry.getTransaction().getTransactionId() + t, true));
+//            entry.getTransaction().setCommitFrontier(null);
+//        }
+        for (int i = 0; i < gcSize; i++) {
+            toRemove.add(txnEntries.get(inMemoryIndexes.get(i)));
+        }
+        // serialize
+        // about 0.5 each time
+        {
+//            if (gcSize > 0) {
+//                long t1 = System.currentTimeMillis();
+//                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+//                try (ObjectOutputStream oos = new ObjectOutputStream(new GZIPOutputStream(baos));
+//                     FileOutputStream fos = new FileOutputStream(cacheDir + System.currentTimeMillis())) {
+//                    oos.writeObject(toRemove);
+//                    baos.writeTo(fos);
+//                } catch (IOException e) {
+//                    throw new RuntimeException(e);
+//                }
+//                System.out.println("serialize " + gcSize + " entries using " + (System.currentTimeMillis() - t1) / 1000.0 + "s");
+//            }
+        }
+        // about 0.15 each time
+        {
+            if (gcSize > 0) {
+                long t1 = System.currentTimeMillis();
+                try (Output output = new Output(new GZIPOutputStream(
+                        Files.newOutputStream(Paths.get(cacheDir + System.currentTimeMillis()))))) {
+                    kryo.writeObject(output, toRemove);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                System.out.println("serialize " + gcSize + " entries using " + (System.currentTimeMillis() - t1) / 1000.0 + "s");
+            }
+        }
+        // about 0.5 each time
+        {
+//            if (gcSize > 0) {
+//                long t1 = System.currentTimeMillis();
+//                try (ObjectOutputStream oos = new ObjectOutputStream(new GZIPOutputStream(Files.newOutputStream(Paths.get(cacheDir + System.currentTimeMillis()))))) {
+//                    oos.writeObject(toRemove);
+//                } catch (IOException e) {
+//                    throw new RuntimeException(e);
+//                }
+//                System.out.println("serialize " + gcSize + " entries using " + (System.currentTimeMillis() - t1) / 1000.0 + "s");
+//            }
+        }
         for (int i = 0; i < gcSize; i++) {
             TransactionEntry<KeyType, ValueType> entry = txnEntries.get(inMemoryIndexes.get(i));
-            toRemove.add(entry);
             String t;
             if (entry.getEntryType() == TransactionEntry.EntryType.START) {
                 t = "-s";
@@ -231,6 +307,7 @@ public class OnlineChecker implements Checker {
                 t = "-c";
             }
             history.getTxnIdWhetherGc().set(allIndexes.get(i), Pair.of(entry.getTransaction().getTransactionId() + t, true));
+            entry.getTransaction().setCommitFrontier(null);
         }
         txnEntries.removeAll(toRemove);
         if (!toRemove.isEmpty()) {
