@@ -87,7 +87,7 @@ public class OnlineChecker implements Checker {
                             .getOrDefault(k, history.getInitialTxn());
                     if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
                         // violate EXT so far
-                        currentTxn.getExtViolations().add(new EXT<>(previousTxn,
+                        currentTxn.getExtViolations().add(new EXT<>(previousTxn.getTransactionId(),
                                 currentTxn, k, previousTxn.getExtWriteKeys().get(k), v));
                     }
                 } else if (!Objects.equals(intKeys.get(k), v)) {

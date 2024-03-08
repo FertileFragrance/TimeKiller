@@ -13,7 +13,10 @@ public class History<KeyType, ValueType> {
     private final ArrayList<TransactionEntry<KeyType, ValueType>> transactionEntries;
     private final HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyWritten;
     private final int keyNumber;
-    private final HashMap<KeyType, Transaction<KeyType, ValueType>> frontier;
+
+    private final HashMap<KeyType, ValueType> frontierVal;
+    private final HashMap<KeyType, String> frontierTid;
+
     private final Transaction<KeyType, ValueType> initialTxn;
 
     private final ArrayList<Pair<String, Boolean>> txnIdWhetherGc = new ArrayList<>(2);
@@ -25,12 +28,13 @@ public class History<KeyType, ValueType> {
     public History(ArrayList<Transaction<KeyType, ValueType>> transactions, int keyNumber,
                    ArrayList<TransactionEntry<KeyType, ValueType>> transactionEntries,
                    HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyWritten,
-                   HashMap<KeyType, Transaction<KeyType, ValueType>> frontier) {
+                   HashMap<KeyType, ValueType> frontierVal, HashMap<KeyType, String> frontierTid) {
         this.transactions = transactions;
         this.keyNumber = keyNumber;
         this.transactionEntries = transactionEntries;
         this.keyWritten = keyWritten;
-        this.frontier = frontier;
+        this.frontierVal = frontierVal;
+        this.frontierTid = frontierTid;
 
         Stats.SORTING_START = System.currentTimeMillis();
 
@@ -71,7 +75,7 @@ public class History<KeyType, ValueType> {
                 }
             });
             Collections.sort(transactionEntries);
-            frontier.forEach((k, v) -> frontier.put(k, initialTxn));
+            frontierVal.forEach((k, v) -> frontierVal.put(k, initialTxn.getOperations().get(0).getValue()));
         }
     }
 
@@ -91,8 +95,12 @@ public class History<KeyType, ValueType> {
         return keyNumber;
     }
 
-    public HashMap<KeyType, Transaction<KeyType, ValueType>> getFrontier() {
-        return frontier;
+    public HashMap<KeyType, ValueType> getFrontierVal() {
+        return frontierVal;
+    }
+
+    public HashMap<KeyType, String> getFrontierTid() {
+        return frontierTid;
     }
 
     public Transaction<KeyType, ValueType> getInitialTxn() {

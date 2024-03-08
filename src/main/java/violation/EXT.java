@@ -7,7 +7,7 @@ import history.transaction.Transaction;
 import java.io.Serializable;
 
 public class EXT<KeyType, ValueType> extends Violation implements Serializable {
-    private Transaction<KeyType, ValueType> formerTxn;
+    private String formerTxnId;
     private final Transaction<KeyType, ValueType> latterTxn;
     private final KeyType key;
     private ValueType formerValue;
@@ -20,10 +20,10 @@ public class EXT<KeyType, ValueType> extends Violation implements Serializable {
 
     private EXTType extType;
 
-    public EXT(Transaction<KeyType, ValueType> formerTxn, Transaction<KeyType, ValueType> latterTxn,
+    public EXT(String formerTxnId, Transaction<KeyType, ValueType> latterTxn,
                KeyType key, ValueType formerValue, ValueType latterValue) {
         this.type = ViolationType.EXT;
-        this.formerTxn = formerTxn;
+        this.formerTxnId = formerTxnId;
         this.latterTxn = latterTxn;
         this.key = key;
         this.formerValue = formerValue;
@@ -46,21 +46,15 @@ public class EXT<KeyType, ValueType> extends Violation implements Serializable {
     public String toString() {
         String s1 = "Violation of EXT is found ";
         String s2;
-        if ("initial".equals(formerTxn.getTransactionId())) {
+        if (writeLatterValueTxn == null) {
+            s2 = "null";
+        } else if ("initial".equals(writeLatterValueTxn.getTransactionId())) {
             s2 = "{id=initial, ops=[w(" + key + ", " + Arg.INITIAL_VALUE + ")], startTs=HLC(0, 0), commitTs=HLC(0, 0)}";
         } else {
-            s2 = formerTxn.toString();
-        }
-        String s3;
-        if (writeLatterValueTxn == null) {
-            s3 = "null";
-        } else if ("initial".equals(writeLatterValueTxn.getTransactionId())) {
-            s3 = "{id=initial, ops=[w(" + key + ", " + Arg.INITIAL_VALUE + ")], startTs=HLC(0, 0), commitTs=HLC(0, 0)}";
-        } else {
-            s3 = writeLatterValueTxn.toString();
+            s2 = writeLatterValueTxn.toString();
         }
         String result = s1 + "{" +
-                "formerTxn=" + s2 +
+                "formerTxnId=" + formerTxnId +
                 ", latterTxn=" + latterTxn +
                 ", key=" + key +
                 ", formerValue=" + formerValue +
@@ -68,19 +62,19 @@ public class EXT<KeyType, ValueType> extends Violation implements Serializable {
         if ("online".equals(Arg.MODE)) {
             result += '}';
         } else {
-            result += ", writeLatterValueTxn=" + s3 +
+            result += ", writeLatterValueTxn=" + s2 +
                     ", extType=" + extType +
                     '}';
         }
         return result;
     }
 
-    public Transaction<KeyType, ValueType> getFormerTxn() {
-        return formerTxn;
+    public String getFormerTxnId() {
+        return formerTxnId;
     }
 
-    public void setFormerTxn(Transaction<KeyType, ValueType> formerTxn) {
-        this.formerTxn = formerTxn;
+    public void setFormerTxnId(String formerTxnId) {
+        this.formerTxnId = formerTxnId;
     }
 
     public Transaction<KeyType, ValueType> getLatterTxn() {

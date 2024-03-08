@@ -43,7 +43,7 @@ public class FastChecker implements Checker {
                             if (previousTxn.getCommitTimestamp().compareTo(currentTxn.getStartTimestamp()) <= 0) {
                                 if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
                                     // violate EXT
-                                    EXT<KeyType, ValueType> extViolation = new EXT<>(previousTxn,
+                                    EXT<KeyType, ValueType> extViolation = new EXT<>(previousTxn.getTransactionId(),
                                             currentTxn, k, previousTxn.getExtWriteKeys().get(k), v);
                                     violations.add(extViolation);
                                     for (int jj = writeToKeyTxns.size() - 1; jj >= 0; jj--) {

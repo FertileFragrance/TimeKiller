@@ -36,7 +36,7 @@ public class OnlineReader implements Reader<Long, Long> {
             txnEntries.add(new TransactionEntry<>(initialTxn, TransactionEntry.EntryType.COMMIT,
                     initialTxn.getCommitTimestamp()));
             history = new History<>(null, initialTxn.getExtWriteKeys().size(),
-                    txnEntries, null, null);
+                    txnEntries, null, null, null);
             history.setStartEntryIndex(0);
             history.setStartEntryIndexInMemory(0);
             history.setCommitEntryIndex(1);

@@ -16,6 +16,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class JSONFileGcReader implements Reader<Long, Long> {
+    private Transaction<Long, Long> initialTxn;
+    private HashMap<Long, Long> frontierVal;
+    private HashMap<Long, String> frontierTid;
+
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(Object filepath) {
         Stats.LOADING_START = System.currentTimeMillis();
@@ -78,8 +82,7 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         }
         System.gc();
         assert txnEntries != null;
-        Pair<Transaction<Long, Long>, HashMap<Long, Transaction<Long, Long>>> initialTxnAndFrontier = createInitialTxn(maxKey);
-        Transaction<Long, Long> initialTxn = initialTxnAndFrontier.getLeft();
+        createInitialTxn(maxKey);
         txnEntries.set(0, new TransactionEntry<>(initialTxn, TransactionEntry.EntryType.START,
                 initialTxn.getStartTimestamp()));
         txnEntries.set(1, new TransactionEntry<>(initialTxn, TransactionEntry.EntryType.COMMIT,
@@ -98,24 +101,25 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         System.out.println("===========================================");
 
         return Pair.of(new History<>(null, initialTxn.getExtWriteKeys().size(),
-                txnEntries, null, initialTxnAndFrontier.getRight()), violations);
+                txnEntries, null, frontierVal, frontierTid), violations);
     }
 
-    private Pair<Transaction<Long, Long>, HashMap<Long, Transaction<Long, Long>>> createInitialTxn(long maxKey) {
-        HashMap<Long, Transaction<Long, Long>> frontier = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+    private void createInitialTxn(long maxKey) {
+        frontierVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+        frontierTid = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
         HybridLogicalClock startTimestamp = new HybridLogicalClock(0L, 0L);
         HybridLogicalClock commitTimestamp = new HybridLogicalClock(0L, 0L);
-        Transaction<Long, Long> initialTxn = new Transaction<>("initial", "initial",
+        initialTxn = new Transaction<>("initial", "initial",
                 operations, startTimestamp, commitTimestamp);
         initialTxn.setExtWriteKeys(extWriteKeys);
         for (long key = 0; key <= maxKey; key++) {
             operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
             extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
-            frontier.put(key, initialTxn);
+            frontierVal.put(key, Arg.INITIAL_VALUE_LONG);
+            frontierTid.put(key, "initial");
         }
-        return Pair.of(initialTxn, frontier);
     }
 }

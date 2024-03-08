@@ -19,6 +19,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 public class JSONFileFastReader implements Reader<Long, Long> {
+    private Transaction<Long, Long> initialTxn;
+    private HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten;
+
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(Object filepath) {
         Stats.LOADING_START = System.currentTimeMillis();
@@ -79,8 +82,8 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         }
         System.gc();
         assert txns != null;
-        Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> initialTxnAndKeyWritten = createInitialTxn(maxKey);
-        txns.set(0, initialTxnAndKeyWritten.getLeft());
+        createInitialTxn(maxKey);
+        txns.set(0, initialTxn);
 
         Stats.LOADING_END = System.currentTimeMillis();
 
@@ -94,18 +97,18 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         System.out.printf("|  Write op percentage:     %-10f s  |\n", (double) writeOpCount / opCount);
         System.out.println("===========================================");
 
-        return Pair.of(new History<>(txns, initialTxnAndKeyWritten.getRight().size(),
-                null, initialTxnAndKeyWritten.getRight(), null), violations);
+        return Pair.of(new History<>(txns, keyWritten.size(), null,
+                keyWritten, null, null), violations);
     }
 
-    private Pair<Transaction<Long, Long>, HashMap<Long, ArrayList<Transaction<Long, Long>>>> createInitialTxn(long maxKey) {
-        HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+    private void createInitialTxn(long maxKey) {
+        keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
         HybridLogicalClock startTimestamp = new HybridLogicalClock(0L, 0L);
         HybridLogicalClock commitTimestamp = new HybridLogicalClock(0L, 0L);
-        Transaction<Long, Long> initialTxn = new Transaction<>("initial", "initial",
+        initialTxn = new Transaction<>("initial", "initial",
                 operations, startTimestamp, commitTimestamp);
         initialTxn.setExtWriteKeys(extWriteKeys);
         for (long key = 0; key <= maxKey; key++) {
@@ -115,6 +118,5 @@ public class JSONFileFastReader implements Reader<Long, Long> {
             writeToKeyTxns.add(initialTxn);
             keyWritten.put(key, writeToKeyTxns);
         }
-        return Pair.of(initialTxn, keyWritten);
     }
 }

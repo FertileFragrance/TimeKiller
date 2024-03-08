@@ -155,8 +155,8 @@ public class Transaction<KeyType, ValueType> implements Serializable {
                     boolean addANewOne = true;
                     for (EXT<KeyType, ValueType> extViolation : extViolations) {
                         if (extViolation.getKey().equals(k)) {
-                            if (!extViolation.getFormerTxn().equals(previousTxn)) {
-                                extViolation.setFormerTxn(previousTxn);
+                            if (!extViolation.getFormerTxnId().equals(previousTxn.getTransactionId())) {
+                                extViolation.setFormerTxnId(previousTxn.getTransactionId());
                                 extViolation.setFormerValue(previousTxn.getExtWriteKeys().get(k));
                             }
                             addANewOne = false;
@@ -164,7 +164,8 @@ public class Transaction<KeyType, ValueType> implements Serializable {
                         }
                     }
                     if (addANewOne) {
-                        extViolations.add(new EXT<>(previousTxn, this, k, previousTxn.getExtWriteKeys().get(k), v));
+                        extViolations.add(new EXT<>(previousTxn.getTransactionId(),
+                                this, k, previousTxn.getExtWriteKeys().get(k), v));
                     }
                 } else {
                     // remove a potential EXT violation

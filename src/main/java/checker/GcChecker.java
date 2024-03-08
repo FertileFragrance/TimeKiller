@@ -17,17 +17,15 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Objects;
+import java.util.*;
 
 public class GcChecker implements Checker {
     @Override
     public <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history) {
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<Operation<KeyType, ValueType>, EXT<KeyType, ValueType>> incompleteExts = new HashMap<>(9);
-        HashMap<KeyType, Transaction<KeyType, ValueType>> frontier = history.getFrontier();
+        HashMap<KeyType, ValueType> frontierVal = history.getFrontierVal();
+        HashMap<KeyType, String> frontierTid = history.getFrontierTid();
         HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyOngoing = new HashMap<>(history.getKeyNumber() * 4 / 3 + 1);
         int checkedEntryCount = 0;
         for (int i = 2; i < history.getTransactionEntries().size(); i++) {
@@ -44,11 +42,10 @@ public class GcChecker implements Checker {
                     if (op.getType() == OpType.read) {
                         if (!intKeys.containsKey(k)) {
                             // check EXT
-                            Transaction<KeyType, ValueType> previousTxn = frontier.get(k);
-                            if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
+                            if (!Objects.equals(frontierVal.get(k), v)) {
                                 // violate EXT
-                                EXT<KeyType, ValueType> extViolation = new EXT<>(previousTxn,
-                                        currentTxn, k, previousTxn.getExtWriteKeys().get(k), v);
+                                EXT<KeyType, ValueType> extViolation = new EXT<>(frontierTid.get(k),
+                                        currentTxn, k, frontierVal.get(k), v);
                                 violations.add(extViolation);
                                 for (int j = ongoingTxns.size() - 1; j >= 0; j--) {
                                     Transaction<KeyType, ValueType> writeTxn = ongoingTxns.get(j);
@@ -97,14 +94,16 @@ public class GcChecker implements Checker {
                 }
                 currentTxn.setExtWriteKeys(extWriteKeys);
             } else {
-                for (KeyType k : currentTxn.getExtWriteKeys().keySet()) {
+                for (Map.Entry<KeyType, ValueType> entry : currentTxn.getExtWriteKeys().entrySet()) {
+                    KeyType k = entry.getKey();
                     ArrayList<Transaction<KeyType, ValueType>> ongoingTxns = keyOngoing.get(k);
                     ongoingTxns.remove(currentTxn);
                     // check NOCONFLICT
                     for (int j = ongoingTxns.size() - 1; j >= 0; j--) {
                         violations.add(new NOCONFLICT<>(ongoingTxns.get(j), currentTxn, k));
                     }
-                    frontier.put(k, currentTxn);
+                    frontierVal.put(k, entry.getValue());
+                    frontierTid.put(k, currentTxn.getTransactionId());
                 }
             }
             checkedEntryCount++;
@@ -121,7 +120,7 @@ public class GcChecker implements Checker {
 
     public <KeyType, ValueType> int gc(History<KeyType, ValueType> history, int currentIndex,
                                        HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyOngoing) {
-        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(history.getFrontier().values());
+        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(keyOngoing.size() * 4 / 3 + 1);
         keyOngoing.forEach((k, v) -> remain.addAll(v));
         HashSet<TransactionEntry<KeyType, ValueType>> toRemove = new HashSet<>(currentIndex * 4 / 3 + 1);
         ArrayList<TransactionEntry<KeyType, ValueType>> transactionEntries = history.getTransactionEntries();

@@ -12,10 +12,10 @@ public class TransactionEntry<KeyType, ValueType> implements Comparable<Transact
             return diff;
         }
         if (entryType == EntryType.COMMIT && o.entryType == EntryType.START) {
-            return 1;
+            return -1;
         }
         if (entryType == EntryType.START && o.entryType == EntryType.COMMIT) {
-            return -1;
+            return 1;
         }
         return 0;
     }
