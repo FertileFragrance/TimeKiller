@@ -8,6 +8,7 @@ import history.transaction.OpType;
 import history.transaction.Operation;
 import history.transaction.Transaction;
 import history.transaction.TransactionEntry;
+import org.apache.commons.lang3.tuple.Pair;
 import violation.EXT;
 import violation.INT;
 import violation.NOCONFLICT;
@@ -24,8 +25,7 @@ public class GcChecker implements Checker {
     public <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history) {
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<Operation<KeyType, ValueType>, EXT<KeyType, ValueType>> incompleteExts = new HashMap<>(9);
-        HashMap<KeyType, ValueType> frontierVal = history.getFrontierVal();
-        HashMap<KeyType, String> frontierTid = history.getFrontierTid();
+        HashMap<KeyType, Pair<String, ValueType>> frontierTidVal = history.getFrontierTidVal();
         HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyOngoing = new HashMap<>(history.getKeyNumber() * 4 / 3 + 1);
         int checkedEntryCount = 0;
         for (int i = 2; i < history.getTransactionEntries().size(); i++) {
@@ -42,10 +42,10 @@ public class GcChecker implements Checker {
                     if (op.getType() == OpType.read) {
                         if (!intKeys.containsKey(k)) {
                             // check EXT
-                            if (!Objects.equals(frontierVal.get(k), v)) {
+                            if (!Objects.equals(frontierTidVal.get(k).getRight(), v)) {
                                 // violate EXT
-                                EXT<KeyType, ValueType> extViolation = new EXT<>(frontierTid.get(k),
-                                        currentTxn, k, frontierVal.get(k), v);
+                                EXT<KeyType, ValueType> extViolation = new EXT<>(frontierTidVal.get(k).getLeft(),
+                                        currentTxn, k, frontierTidVal.get(k).getRight(), v);
                                 violations.add(extViolation);
                                 for (int j = ongoingTxns.size() - 1; j >= 0; j--) {
                                     Transaction<KeyType, ValueType> writeTxn = ongoingTxns.get(j);
@@ -102,8 +102,7 @@ public class GcChecker implements Checker {
                     for (int j = ongoingTxns.size() - 1; j >= 0; j--) {
                         violations.add(new NOCONFLICT<>(ongoingTxns.get(j), currentTxn, k));
                     }
-                    frontierVal.put(k, entry.getValue());
-                    frontierTid.put(k, currentTxn.getTransactionId());
+                    frontierTidVal.put(k, Pair.of(currentTxn.getTransactionId(), entry.getValue()));
                 }
             }
             checkedEntryCount++;

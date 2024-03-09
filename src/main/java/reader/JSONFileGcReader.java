@@ -17,8 +17,7 @@ import java.util.HashMap;
 
 public class JSONFileGcReader implements Reader<Long, Long> {
     private Transaction<Long, Long> initialTxn;
-    private HashMap<Long, Long> frontierVal;
-    private HashMap<Long, String> frontierTid;
+    private HashMap<Long, Pair<String, Long>> frontierTidVal;
 
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(Object filepath) {
@@ -101,12 +100,11 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         System.out.println("===========================================");
 
         return Pair.of(new History<>(null, initialTxn.getExtWriteKeys().size(),
-                txnEntries, null, frontierVal, frontierTid), violations);
+                txnEntries, null, frontierTidVal), violations);
     }
 
     private void createInitialTxn(long maxKey) {
-        frontierVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
-        frontierTid = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+        frontierTidVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
@@ -118,8 +116,7 @@ public class JSONFileGcReader implements Reader<Long, Long> {
         for (long key = 0; key <= maxKey; key++) {
             operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
             extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
-            frontierVal.put(key, Arg.INITIAL_VALUE_LONG);
-            frontierTid.put(key, "initial");
+            frontierTidVal.put(key, Pair.of("initial", Arg.INITIAL_VALUE_LONG));
         }
     }
 }

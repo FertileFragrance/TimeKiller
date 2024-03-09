@@ -98,7 +98,7 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         System.out.println("===========================================");
 
         return Pair.of(new History<>(txns, keyWritten.size(), null,
-                keyWritten, null, null), violations);
+                keyWritten, null), violations);
     }
 
     private void createInitialTxn(long maxKey) {
