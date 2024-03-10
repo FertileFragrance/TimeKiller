@@ -94,15 +94,15 @@ public class GcChecker implements Checker {
                 }
                 currentTxn.setExtWriteKeys(extWriteKeys);
             } else {
-                for (Map.Entry<KeyType, ValueType> entry : currentTxn.getExtWriteKeys().entrySet()) {
-                    KeyType k = entry.getKey();
+                for (Map.Entry<KeyType, ValueType> kv : currentTxn.getExtWriteKeys().entrySet()) {
+                    KeyType k = kv.getKey();
                     ArrayList<Transaction<KeyType, ValueType>> ongoingTxns = keyOngoing.get(k);
                     ongoingTxns.remove(currentTxn);
                     // check NOCONFLICT
                     for (int j = ongoingTxns.size() - 1; j >= 0; j--) {
                         violations.add(new NOCONFLICT<>(ongoingTxns.get(j), currentTxn, k));
                     }
-                    frontierTidVal.put(k, Pair.of(currentTxn.getTransactionId(), entry.getValue()));
+                    frontierTidVal.put(k, Pair.of(currentTxn.getTransactionId(), kv.getValue()));
                 }
             }
             checkedEntryCount++;

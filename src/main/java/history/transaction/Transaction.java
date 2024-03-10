@@ -2,6 +2,7 @@ package history.transaction;
 
 import com.alibaba.fastjson.annotation.JSONField;
 import info.Arg;
+import org.apache.commons.lang3.tuple.Pair;
 import violation.EXT;
 
 import java.io.Serializable;
@@ -27,9 +28,9 @@ public class Transaction<KeyType, ValueType> implements Serializable {
 
     @JSONField(serialize = false)
     private Long realtimeTimestamp;
-
+    
     @JSONField(serialize = false)
-    private HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier;
+    private HashMap<KeyType, Pair<String, ValueType>> commitFrontierTidVal;
 
     @JSONField(serialize = false)
     private boolean timeout;
@@ -77,12 +78,12 @@ public class Transaction<KeyType, ValueType> implements Serializable {
         this.realtimeTimestamp = realtimeTimestamp;
     }
 
-    public HashMap<KeyType, Transaction<KeyType, ValueType>> getCommitFrontier() {
-        return commitFrontier;
+    public HashMap<KeyType, Pair<String, ValueType>> getCommitFrontierTidVal() {
+        return commitFrontierTidVal;
     }
 
-    public void setCommitFrontier(HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier) {
-        this.commitFrontier = commitFrontier;
+    public void setCommitFrontierTidVal(HashMap<KeyType, Pair<String, ValueType>> commitFrontierTidVal) {
+        this.commitFrontierTidVal = commitFrontierTidVal;
     }
 
     public boolean isTimeout() {
@@ -148,24 +149,23 @@ public class Transaction<KeyType, ValueType> implements Serializable {
             ValueType v = op.getValue();
             if (op.getType() == OpType.read && !intKeys.containsKey(k)
                     && currentTxn.getExtWriteKeys().containsKey(k)) {
-                Transaction<KeyType, ValueType> previousTxn = lastCommittedTxn
-                        .getCommitFrontier().getOrDefault(k, initialTxn);
-                if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
+                Pair<String, ValueType> tidVal = lastCommittedTxn.getCommitFrontierTidVal().getOrDefault(k,
+                        Pair.of(initialTxn.getTransactionId(), initialTxn.getOperations().get(0).getValue()));
+                if (!Objects.equals(tidVal.getRight(), v)) {
                     // add a new EXT violation or update an existing EXT violation
                     boolean addANewOne = true;
                     for (EXT<KeyType, ValueType> extViolation : extViolations) {
                         if (extViolation.getKey().equals(k)) {
-                            if (!extViolation.getFormerTxnId().equals(previousTxn.getTransactionId())) {
-                                extViolation.setFormerTxnId(previousTxn.getTransactionId());
-                                extViolation.setFormerValue(previousTxn.getExtWriteKeys().get(k));
+                            if (!extViolation.getFormerTxnId().equals(tidVal.getLeft())) {
+                                extViolation.setFormerTxnId(tidVal.getLeft());
+                                extViolation.setFormerValue(tidVal.getRight());
                             }
                             addANewOne = false;
                             break;
                         }
                     }
                     if (addANewOne) {
-                        extViolations.add(new EXT<>(previousTxn.getTransactionId(),
-                                this, k, previousTxn.getExtWriteKeys().get(k), v));
+                        extViolations.add(new EXT<>(tidVal.getLeft(), this, k, tidVal.getRight(), v));
                     }
                 } else {
                     // remove a potential EXT violation

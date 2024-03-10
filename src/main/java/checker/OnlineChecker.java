@@ -7,6 +7,7 @@ import com.esotericsoftware.kryo.io.Output;
 import history.History;
 import history.transaction.*;
 import info.Arg;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import violation.EXT;
 import violation.INT;
@@ -39,6 +40,7 @@ public class OnlineChecker implements Checker {
         kryo.register(EXT.class);
         kryo.register(EXT.EXTType.class);
         kryo.register(ViolationType.class);
+        kryo.register(ImmutablePair.class);
         kryo.setReferences(true);
     }
 
@@ -48,6 +50,7 @@ public class OnlineChecker implements Checker {
             continueSerializing = false;
         }
         ArrayList<Violation> violations = new ArrayList<>();
+        Transaction<KeyType, ValueType> initialTxn = history.getInitialTxn();
         ArrayList<TransactionEntry<KeyType, ValueType>> txnEntries = history.getTransactionEntries();
         ArrayList<Pair<String, Boolean>> txnIdWhetherGc = history.getTxnIdWhetherGc();
         Transaction<KeyType, ValueType> currentTxn = txnEntries
@@ -83,12 +86,12 @@ public class OnlineChecker implements Checker {
             if (op.getType() == OpType.read) {
                 if (!intKeys.containsKey(k)) {
                     // check EXT
-                    Transaction<KeyType, ValueType> previousTxn = lastCommittedTxn.getCommitFrontier()
-                            .getOrDefault(k, history.getInitialTxn());
-                    if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
+                    Pair<String, ValueType> tidVal = lastCommittedTxn.getCommitFrontierTidVal().getOrDefault(k,
+                            Pair.of(initialTxn.getTransactionId(), initialTxn.getOperations().get(0).getValue()));
+                    if (!Objects.equals(tidVal.getRight(), v)) {
                         // violate EXT so far
-                        currentTxn.getExtViolations().add(new EXT<>(previousTxn.getTransactionId(),
-                                currentTxn, k, previousTxn.getExtWriteKeys().get(k), v));
+                        currentTxn.getExtViolations().add(new EXT<>(
+                                tidVal.getLeft(), currentTxn, k, tidVal.getRight(), v));
                     }
                 } else if (!Objects.equals(intKeys.get(k), v)) {
                     violations.add(new INT<>(currentTxn, k, intKeys.get(k), v));
@@ -99,8 +102,8 @@ public class OnlineChecker implements Checker {
             intKeys.put(k, v);
         }
         currentTxn.setExtWriteKeys(extWriteKeys);
-        HashMap<KeyType, Transaction<KeyType, ValueType>> commitFrontier =
-                new HashMap<>(lastCommittedTxn.getCommitFrontier());
+        HashMap<KeyType, Pair<String, ValueType>> commitFrontierTidVal =
+                new HashMap<>(lastCommittedTxn.getCommitFrontierTidVal());
         // update commitFrontier in between
         entryIndexInMemory = history.getStartEntryIndexInMemory() + 1;
         for (int i = history.getStartEntryIndex() + 1; i < history.getCommitEntryIndex(); i++) {
@@ -118,15 +121,16 @@ public class OnlineChecker implements Checker {
             }
             assert entry != null;
             if (entry.getEntryType() == TransactionEntry.EntryType.COMMIT) {
-                for (KeyType k : entry.getTransaction().getExtWriteKeys().keySet()) {
-                    commitFrontier.put(k, entry.getTransaction());
+                for (Map.Entry<KeyType, ValueType> kv : entry.getTransaction().getExtWriteKeys().entrySet()) {
+                    commitFrontierTidVal.put(kv.getKey(),
+                            Pair.of(entry.getTransaction().getTransactionId(), kv.getValue()));
                 }
             }
         }
-        for (KeyType k : extWriteKeys.keySet()) {
-            commitFrontier.put(k, currentTxn);
+        for (Map.Entry<KeyType, ValueType> kv : extWriteKeys.entrySet()) {
+            commitFrontierTidVal.put(kv.getKey(), Pair.of(currentTxn.getTransactionId(), kv.getValue()));
         }
-        currentTxn.setCommitFrontier(commitFrontier);
+        currentTxn.setCommitFrontierTidVal(commitFrontierTidVal);
         // re-check EXT
         lastCommittedTxn = currentTxn;
         HashSet<KeyType> writeKeys = new HashSet<>(currentTxn.getExtWriteKeys().keySet());
@@ -147,16 +151,17 @@ public class OnlineChecker implements Checker {
             assert entry != null;
             Transaction<KeyType, ValueType> recheckTxn = entry.getTransaction();
             if (entry.getEntryType() == TransactionEntry.EntryType.START) {
-                recheckTxn.recheckExt(lastCommittedTxn, currentTxn, history.getInitialTxn());
+                recheckTxn.recheckExt(lastCommittedTxn, currentTxn, initialTxn);
             } else {
                 lastCommittedTxn = recheckTxn;
                 writeKeys.removeIf(k -> recheckTxn.getExtWriteKeys().containsKey(k));
                 if (writeKeys.isEmpty()) {
                     break;
                 }
-                commitFrontier = recheckTxn.getCommitFrontier();
+                commitFrontierTidVal = recheckTxn.getCommitFrontierTidVal();
                 for (KeyType k : writeKeys) {
-                    commitFrontier.put(k, currentTxn);
+                    commitFrontierTidVal.put(k,
+                            Pair.of(currentTxn.getTransactionId(), currentTxn.getExtWriteKeys().get(k)));
                 }
                 if (txnIdWhetherGc.get(i).getRight()) {
                     try (FileOutputStream fileOut = new FileOutputStream(cacheDir + recheckTxn.getTransactionId());
@@ -180,8 +185,9 @@ public class OnlineChecker implements Checker {
     public <KeyType, ValueType> Pair<ArrayList<Integer>, ArrayList<Integer>> preGc(History<KeyType, ValueType> history) {
         GcTask.gcLock.lock();
         ArrayList<TransactionEntry<KeyType, ValueType>> txnEntries = history.getTransactionEntries();
-        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(txnEntries
-                .get(txnEntries.size() - 1).getTransaction().getCommitFrontier().values());
+//        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>(txnEntries
+//                .get(txnEntries.size() - 1).getTransaction().getCommitFrontier().values());
+        HashSet<Transaction<KeyType, ValueType>> remain = new HashSet<>();
         ArrayList<Pair<String, Boolean>> txnIdWhetherGc = history.getTxnIdWhetherGc();
         ArrayList<Integer> allIndexes = new ArrayList<>();
         ArrayList<Integer> inMemoryIndexes = new ArrayList<>();
@@ -305,9 +311,9 @@ public class OnlineChecker implements Checker {
                 t = "-s";
             } else {
                 t = "-c";
+                entry.getTransaction().setCommitFrontierTidVal(null);
             }
             history.getTxnIdWhetherGc().set(allIndexes.get(i), Pair.of(entry.getTransaction().getTransactionId() + t, true));
-            entry.getTransaction().setCommitFrontier(null);
         }
         txnEntries.removeAll(toRemove);
         if (!toRemove.isEmpty()) {

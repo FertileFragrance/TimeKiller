@@ -150,7 +150,7 @@ public class OnlineReader implements Reader<Long, Long> {
     }
 
     private Transaction<Long, Long> createInitialTxn() {
-        HashMap<Long, Transaction<Long, Long>> commitFrontier = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+        HashMap<Long, Pair<String, Long>> commitFrontierTidVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
@@ -159,7 +159,7 @@ public class OnlineReader implements Reader<Long, Long> {
         Transaction<Long, Long> initialTxn = new Transaction<>("initial", "initial",
                 operations, startTimestamp, commitTimestamp);
         initialTxn.setExtWriteKeys(extWriteKeys);
-        initialTxn.setCommitFrontier(commitFrontier);
+        initialTxn.setCommitFrontierTidVal(commitFrontierTidVal);
         for (long key = 0; key <= maxKey; key++) {
             operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
             extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
