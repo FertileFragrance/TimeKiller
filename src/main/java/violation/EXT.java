@@ -8,10 +8,10 @@ import java.io.Serializable;
 
 public class EXT<KeyType, ValueType> extends Violation implements Serializable {
     private String formerTxnId;
-    private final Transaction<KeyType, ValueType> latterTxn;
-    private final KeyType key;
+    private Transaction<KeyType, ValueType> latterTxn;
+    private KeyType key;
     private ValueType formerValue;
-    private final ValueType latterValue;
+    private ValueType latterValue;
     private Transaction<KeyType, ValueType> writeLatterValueTxn;
 
     public enum EXTType implements Serializable {
@@ -30,6 +30,8 @@ public class EXT<KeyType, ValueType> extends Violation implements Serializable {
         this.latterValue = latterValue;
         this.extType = EXTType.NEVER;
     }
+
+    public EXT() {}
 
     @Override
     public void fix() {

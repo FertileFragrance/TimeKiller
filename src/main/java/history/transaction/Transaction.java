@@ -2,7 +2,6 @@ package history.transaction;
 
 import com.alibaba.fastjson.annotation.JSONField;
 import info.Arg;
-import org.apache.commons.lang3.tuple.Pair;
 import violation.EXT;
 
 import java.io.Serializable;
@@ -13,15 +12,15 @@ import java.util.Objects;
 
 public class Transaction<KeyType, ValueType> implements Serializable {
     @JSONField(name = "tid")
-    private final String transactionId;
+    private String transactionId;
     @JSONField(name = "sid")
-    private final String sessionId;
+    private String sessionId;
     @JSONField(name = "ops")
-    private final ArrayList<Operation<KeyType, ValueType>> operations;
+    private ArrayList<Operation<KeyType, ValueType>> operations;
     @JSONField(name = "sts")
     private HybridLogicalClock startTimestamp;
     @JSONField(name = "cts")
-    private final HybridLogicalClock commitTimestamp;
+    private HybridLogicalClock commitTimestamp;
 
     @JSONField(serialize = false)
     private HashMap<KeyType, ValueType> extWriteKeys;
@@ -30,7 +29,7 @@ public class Transaction<KeyType, ValueType> implements Serializable {
     private Long realtimeTimestamp;
     
     @JSONField(serialize = false)
-    private HashMap<KeyType, Pair<String, ValueType>> commitFrontierTidVal;
+    private HashMap<KeyType, TidVal<ValueType>> commitFrontierTidVal;
 
     @JSONField(serialize = false)
     private boolean timeout;
@@ -78,11 +77,11 @@ public class Transaction<KeyType, ValueType> implements Serializable {
         this.realtimeTimestamp = realtimeTimestamp;
     }
 
-    public HashMap<KeyType, Pair<String, ValueType>> getCommitFrontierTidVal() {
+    public HashMap<KeyType, TidVal<ValueType>> getCommitFrontierTidVal() {
         return commitFrontierTidVal;
     }
 
-    public void setCommitFrontierTidVal(HashMap<KeyType, Pair<String, ValueType>> commitFrontierTidVal) {
+    public void setCommitFrontierTidVal(HashMap<KeyType, TidVal<ValueType>> commitFrontierTidVal) {
         this.commitFrontierTidVal = commitFrontierTidVal;
     }
 
@@ -106,6 +105,8 @@ public class Transaction<KeyType, ValueType> implements Serializable {
             extViolations = new ArrayList<>();
         }
     }
+
+    public Transaction() {}
 
     @Override
     public int hashCode() {
@@ -149,8 +150,8 @@ public class Transaction<KeyType, ValueType> implements Serializable {
             ValueType v = op.getValue();
             if (op.getType() == OpType.read && !intKeys.containsKey(k)
                     && currentTxn.getExtWriteKeys().containsKey(k)) {
-                Pair<String, ValueType> tidVal = lastCommittedTxn.getCommitFrontierTidVal().getOrDefault(k,
-                        Pair.of(initialTxn.getTransactionId(), initialTxn.getOperations().get(0).getValue()));
+                TidVal<ValueType> tidVal = lastCommittedTxn.getCommitFrontierTidVal().getOrDefault(k,
+                        new TidVal<>(initialTxn.getTransactionId(), initialTxn.getOperations().get(0).getValue()));
                 if (!Objects.equals(tidVal.getRight(), v)) {
                     // add a new EXT violation or update an existing EXT violation
                     boolean addANewOne = true;

@@ -20,13 +20,13 @@ public class TransactionEntry<KeyType, ValueType> implements Comparable<Transact
         return 0;
     }
 
-    private final Transaction<KeyType, ValueType> transaction;
+    private Transaction<KeyType, ValueType> transaction;
 
     public enum EntryType implements Serializable {
         START, COMMIT
     }
 
-    private final EntryType entryType;
+    private EntryType entryType;
     private HybridLogicalClock timestamp;
 
     public TransactionEntry(Transaction<KeyType, ValueType> transaction,
@@ -35,6 +35,8 @@ public class TransactionEntry<KeyType, ValueType> implements Comparable<Transact
         this.entryType = entryType;
         this.timestamp = timestamp;
     }
+
+    public TransactionEntry() {}
 
     public Transaction<KeyType, ValueType> getTransaction() {
         return transaction;

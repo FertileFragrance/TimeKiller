@@ -18,7 +18,7 @@ public class History<KeyType, ValueType> {
 
     private final Transaction<KeyType, ValueType> initialTxn;
 
-    private final ArrayList<Pair<String, Boolean>> txnIdWhetherGc = new ArrayList<>(2);
+    private final ArrayList<Pair<String, Boolean>> tidEntryWhetherGc = new ArrayList<>(2);
     private int startEntryIndex;
     private int commitEntryIndex;
     private int startEntryIndexInMemory;
@@ -45,8 +45,8 @@ public class History<KeyType, ValueType> {
         } else {
             // Arg.MODE is online
             this.initialTxn = this.transactionEntries.get(0).getTransaction();
-            txnIdWhetherGc.add(Pair.of("initial-s", false));
-            txnIdWhetherGc.add(Pair.of("initial-c", false));
+            tidEntryWhetherGc.add(Pair.of("initial-s", false));
+            tidEntryWhetherGc.add(Pair.of("initial-c", false));
         }
 
         Stats.SORTING_END = System.currentTimeMillis();
@@ -102,8 +102,8 @@ public class History<KeyType, ValueType> {
         return initialTxn;
     }
 
-    public ArrayList<Pair<String, Boolean>> getTxnIdWhetherGc() {
-        return txnIdWhetherGc;
+    public ArrayList<Pair<String, Boolean>> getTidEntryWhetherGc() {
+        return tidEntryWhetherGc;
     }
 
     public int getStartEntryIndex() {

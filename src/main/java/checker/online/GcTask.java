@@ -2,9 +2,7 @@ package checker.online;
 
 import checker.OnlineChecker;
 import history.History;
-import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.ArrayList;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -17,21 +15,24 @@ public class GcTask implements Runnable {
     public GcTask(OnlineChecker onlineChecker, History<?, ?> history) {
         this.onlineChecker = onlineChecker;
         this.history = history;
+
+        GcUtil.init();
     }
 
     @Override
     public void run() {
         while (true) {
-            Pair<ArrayList<Integer>, ArrayList<Integer>> allAndInMemoryIndexes = onlineChecker.preGc(history);
-//            int gcSize = onlineChecker.serialize(allAndInMemoryIndexes, history);
-//            onlineChecker.doGc(allAndInMemoryIndexes, history, gcSize);
-            int size = Math.max(allAndInMemoryIndexes.getLeft().size() - 50, 0);
-            onlineChecker.doGc(allAndInMemoryIndexes, history, size);
-            System.gc();
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            gcLock.lock();
+            int size = onlineChecker.gc(history);
+            gcLock.unlock();
+            if (size > 50) {
+                System.gc();
+            } else {
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
     }

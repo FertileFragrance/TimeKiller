@@ -78,10 +78,10 @@ public class TimeKiller {
                 .desc("HTTP request port for online checking [default: 23333]").build());
         options.addOption(Option.builder().longOpt("timeout_delay").hasArg(true).type(Long.class)
                 .desc("transaction timeout delay of online checking in millisecond [default: 5000]").build());
-        options.addOption(Option.builder().longOpt("max_num_each_gc").hasArg(true).type(Integer.class)
-                .desc("the maximum number of transactions for each online gc [default: 100]").build());
         options.addOption(Option.builder().longOpt("use_cts_as_rtts").hasArg(true).type(Boolean.class)
                 .desc("use the physical part of commit timestamp as realtime timestamp [default: false]").build());
+        options.addOption(Option.builder().longOpt("duration_in_memory").hasArg(true).type(Integer.class)
+                .desc("the duration transaction kept in memory in realtime [default: 10000]").build());
         try {
             CommandLine commandLine = parser.parse(options, args);
             if (commandLine.hasOption("h")) {
@@ -114,11 +114,11 @@ public class TimeKiller {
             if (commandLine.hasOption("timeout_delay")) {
                 Arg.TIMEOUT_DELAY = Long.parseLong(commandLine.getOptionValue("timeout_delay"));
             }
-            if (commandLine.hasOption("max_num_each_gc")) {
-                Arg.MAX_NUM_EACH_GC = Integer.parseInt(commandLine.getOptionValue("max_num_each_gc"));
-            }
             if (commandLine.hasOption("use_cts_as_rtts")) {
                 Arg.USE_CTS_AS_RTTS = Boolean.parseBoolean(commandLine.getOptionValue("use_cts_as_rtts"));
+            }
+            if (commandLine.hasOption("duration_in_memory")) {
+                Arg.DURATION_IN_MEMORY = Long.parseLong(commandLine.getOptionValue("duration_in_memory"));
             }
         } catch (ParseException e) {
             printAndExit(options);
@@ -272,6 +272,9 @@ public class TimeKiller {
                 JSONArray jsonArray = JSONArray.parseArray(request.getContent());
                 for (int i = 0; i < jsonArray.size(); i++) {
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
+                    if (history.getTransactionEntries().size() > 5000) {
+                        Thread.sleep(100);
+                    }
                     GcTask.gcLock.lock();
                     try {
                         Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(jsonObject);

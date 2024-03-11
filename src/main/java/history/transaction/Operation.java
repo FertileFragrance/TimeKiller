@@ -7,9 +7,9 @@ import java.util.Objects;
 
 public class Operation<KeyType, ValueType> implements Serializable {
     @JSONField(name = "t")
-    private final OpType type;
+    private OpType type;
     @JSONField(name = "k")
-    private final KeyType key;
+    private KeyType key;
     @JSONField(name = "v")
     private ValueType value;
 
@@ -18,6 +18,8 @@ public class Operation<KeyType, ValueType> implements Serializable {
         this.key = key;
         this.value = value;
     }
+
+    public Operation() {}
 
     public OpType getType() {
         return type;

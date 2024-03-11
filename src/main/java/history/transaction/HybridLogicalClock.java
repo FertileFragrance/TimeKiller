@@ -6,14 +6,16 @@ import java.io.Serializable;
 
 public class HybridLogicalClock implements Comparable<HybridLogicalClock>, Serializable {
     @JSONField(name = "p")
-    private final Long physical;
+    private Long physical;
     @JSONField(name = "l")
-    private final Long logical;
+    private Long logical;
 
     public HybridLogicalClock(Long physical, Long logical) {
         this.physical = physical;
         this.logical = logical;
     }
+
+    public HybridLogicalClock() {}
 
     public Long getPhysical() {
         return physical;

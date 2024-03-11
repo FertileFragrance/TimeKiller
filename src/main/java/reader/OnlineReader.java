@@ -5,14 +5,12 @@ import info.Arg;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONArray;
 import history.History;
+import checker.online.GcUtil;
 import org.apache.commons.lang3.tuple.Pair;
 import violation.NOCONFLICT;
 import violation.SESSION;
 import violation.Violation;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,8 +19,6 @@ public class OnlineReader implements Reader<Long, Long> {
     private History<Long, Long> history;
     private final HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
     private long maxKey = 1000;
-
-    private final String cacheDir = System.getProperty("user.dir") + "/.cache/TimeKiller/";
 
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(Object jsonObj) {
@@ -45,7 +41,7 @@ public class OnlineReader implements Reader<Long, Long> {
         }
         long lastMaxKey = maxKey;
         txnEntries = history.getTransactionEntries();
-        ArrayList<Pair<String, Boolean>> txnIdWhetherGc = history.getTxnIdWhetherGc();
+        ArrayList<Pair<String, Boolean>> tidEntryWhetherGc = history.getTidEntryWhetherGc();
         JSONObject jsonObject = (JSONObject) jsonObj;
         String sid = jsonObject.getString("sid");
         String txnId = jsonObject.getString("tid");
@@ -99,21 +95,16 @@ public class OnlineReader implements Reader<Long, Long> {
         HashSet<Transaction<Long, Long>> checkedTxns = new HashSet<>();
         boolean commitAdded = false;
         int inMemoryIndex = txnEntries.size() - 1;
-        for (int j = txnIdWhetherGc.size() - 1; j >= 0; j--) {
-            TransactionEntry<Long, Long> existingEntry = null;
-            if (!txnIdWhetherGc.get(j).getRight()) {
+        for (int j = tidEntryWhetherGc.size() - 1; j >= 0; j--) {
+            TransactionEntry<Long, Long> existingEntry;
+            if (!tidEntryWhetherGc.get(j).getRight()) {
                 existingEntry = txnEntries.get(inMemoryIndex);
             } else {
-                try (FileInputStream fileIn = new FileInputStream(cacheDir + txnIdWhetherGc.get(j).getLeft());
-                     ObjectInputStream objIn = new ObjectInputStream(fileIn)) {
-                    existingEntry = (TransactionEntry<Long, Long>) objIn.readObject();
-                } catch (IOException | ClassNotFoundException e) {
-                    e.printStackTrace();
-                }
+                existingEntry = GcUtil.readTxnEntry(tidEntryWhetherGc.get(j).getLeft());
             }
             assert existingEntry != null;
             if (commitTs.compareTo(existingEntry.getTimestamp()) >= 0 && !commitAdded) {
-                txnIdWhetherGc.add(j + 1, Pair.of(txnId, false));
+                tidEntryWhetherGc.add(j + 1, Pair.of(txnId + "-c", false));
                 txnEntries.add(inMemoryIndex + 1, commitEntry);
                 commitAdded = true;
                 history.setCommitEntryIndex(j + 2);
@@ -135,13 +126,13 @@ public class OnlineReader implements Reader<Long, Long> {
                 checkedTxns.add(existingEntry.getTransaction());
             }
             if (startTs.compareTo(existingEntry.getTimestamp()) >= 0) {
-                txnIdWhetherGc.add(j + 1, Pair.of(txnId, false));
+                tidEntryWhetherGc.add(j + 1, Pair.of(txnId + "-s", false));
                 txnEntries.add(inMemoryIndex + 1, startEntry);
                 history.setStartEntryIndex(j + 1);
                 history.setStartEntryIndexInMemory(inMemoryIndex + 1);
                 break;
             }
-            if (!txnIdWhetherGc.get(j).getRight()) {
+            if (!tidEntryWhetherGc.get(j).getRight()) {
                 inMemoryIndex--;
             }
         }
@@ -150,7 +141,7 @@ public class OnlineReader implements Reader<Long, Long> {
     }
 
     private Transaction<Long, Long> createInitialTxn() {
-        HashMap<Long, Pair<String, Long>> commitFrontierTidVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+        HashMap<Long, TidVal<Long>> commitFrontierTidVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
