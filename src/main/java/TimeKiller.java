@@ -70,7 +70,7 @@ public class TimeKiller {
         options.addOption(Option.builder().longOpt("initial_value").hasArg(true).type(Long.class)
                 .desc("the initial value of keys before all writes [default: null]").build());
         options.addOption(Option.builder().longOpt("mode").hasArg(true).type(String.class)
-                .desc("choose a mode to run TimeKiller [default: fast] [possible values: fast, gc]").build());
+                .desc("choose a mode to run TimeKiller [default: fast] [possible values: fast, gc, online]").build());
         options.addOption(Option.builder().longOpt("fix").desc("fix violations if found").build());
         options.addOption(Option.builder().longOpt("num_per_gc").hasArg(true).type(Integer.class)
                 .desc("the number of checked transactions for each gc [default: 20000]").build());
@@ -79,9 +79,17 @@ public class TimeKiller {
         options.addOption(Option.builder().longOpt("timeout_delay").hasArg(true).type(Long.class)
                 .desc("transaction timeout delay of online checking in millisecond [default: 5000]").build());
         options.addOption(Option.builder().longOpt("use_cts_as_rtts").hasArg(true).type(Boolean.class)
-                .desc("use the physical part of commit timestamp as realtime timestamp [default: false]").build());
+                .desc("use the physical part of commit timestamp as realtime timestamp under online mode [default: false]").build());
         options.addOption(Option.builder().longOpt("duration_in_memory").hasArg(true).type(Integer.class)
-                .desc("the duration transaction kept in memory in realtime [default: 10000]").build());
+                .desc("the duration transaction kept in memory in realtime in millisecond under online mode [default: 10000]").build());
+        options.addOption(Option.builder().longOpt("log_ext_flip")
+                .desc("print EXT flip-flops under online mode").build());
+        options.addOption(Option.builder().longOpt("txn_start_gc").hasArg(true).type(Integer.class)
+                .desc("the number of in-memory transactions such that online gc can be called [default: 10000]").build());
+        options.addOption(Option.builder().longOpt("max_txn_in_mem").hasArg(true).type(Integer.class)
+                .desc("the max number of in-memory transactions such that online gc is called immediately regardless of the interval [default: 50000]").build());
+        options.addOption(Option.builder().longOpt("gc_interval").hasArg(true).type(Long.class)
+                .desc("the time interval between online gc in millisecond [default: 10000]").build());
         try {
             CommandLine commandLine = parser.parse(options, args);
             if (commandLine.hasOption("h")) {
@@ -120,6 +128,18 @@ public class TimeKiller {
             if (commandLine.hasOption("duration_in_memory")) {
                 Arg.DURATION_IN_MEMORY = Long.parseLong(commandLine.getOptionValue("duration_in_memory"));
             }
+            if (commandLine.hasOption("log_ext_flip")) {
+                Arg.LOG_EXT_FLIP = true;
+            }
+            if (commandLine.hasOption("txn_start_gc")) {
+                Arg.TXN_START_GC = Integer.parseInt(commandLine.getOptionValue("txn_start_gc"));
+            }
+            if (commandLine.hasOption("max_txn_in_mem")) {
+                Arg.MAX_TXN_IN_MEM = Integer.parseInt(commandLine.getOptionValue("max_txn_in_mem"));
+            }
+            if (commandLine.hasOption("gc_interval")) {
+                Arg.GC_INTERVAL = Integer.parseInt(commandLine.getOptionValue("gc_interval"));
+            }
         } catch (ParseException e) {
             printAndExit(options);
         }
@@ -127,7 +147,7 @@ public class TimeKiller {
 
     private static void printAndExit(Options options) {
         HelpFormatter hf = new HelpFormatter();
-        hf.printHelp(120, "TimeKiller", null, options, null, true);
+        hf.printHelp(160, "TimeKiller", null, options, null, true);
         System.exit(0);
     }
 
@@ -259,6 +279,7 @@ public class TimeKiller {
         server.setExecutor(executorService);
         server.start();
         System.out.println("Server started on port " + Arg.PORT);
+        long nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
         // handle HTTP request
         while (true) {
             try {
@@ -272,8 +293,12 @@ public class TimeKiller {
                 JSONArray jsonArray = JSONArray.parseArray(request.getContent());
                 for (int i = 0; i < jsonArray.size(); i++) {
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
-                    if (history.getTransactionEntries().size() > 5000) {
+                    if (history.getTransactionEntries().size() >= Arg.TXN_START_GC * 2
+                            && System.currentTimeMillis() >= nextGcTime
+                            || history.getTransactionEntries().size() >= Arg.MAX_TXN_IN_MEM * 2) {
+                        GcTask.doGc = true;
                         Thread.sleep(100);
+                        nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
                     }
                     GcTask.gcLock.lock();
                     try {

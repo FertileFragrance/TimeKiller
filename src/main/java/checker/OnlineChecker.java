@@ -82,8 +82,12 @@ public class OnlineChecker implements Checker {
                             new TidVal<>(initialTxn.getTransactionId(), initialTxn.getOperations().get(0).getValue()));
                     if (!Objects.equals(tidVal.getRight(), v)) {
                         // violate EXT so far
-                        currentTxn.getExtViolations().add(new EXT<>(
-                                tidVal.getLeft(), currentTxn, k, tidVal.getRight(), v));
+                        EXT<KeyType, ValueType> ext = new EXT<>(tidVal.getLeft(), currentTxn, k, tidVal.getRight(), v);
+                        currentTxn.getExtViolations().add(ext);
+                        if (Arg.LOG_EXT_FLIP) {
+                            System.out.println("EXT created when checking " +
+                                    currentTxn.getTransactionId() + " on " + k + " at " + System.currentTimeMillis());
+                        }
                     }
                 } else if (!Objects.equals(intKeys.get(k), v)) {
                     violations.add(new INT<>(currentTxn, k, intKeys.get(k), v));
@@ -196,9 +200,6 @@ public class OnlineChecker implements Checker {
                 toRemove.add(entry);
                 GcUtil.tidEntryToFile.put(tidEntry, path);
                 tidEntryWhetherGc.set(i, Pair.of(tidEntry, true));
-                if (toRemove.size() == 2500) {
-                    break;
-                }
             }
             inMemoryIndex++;
         }
@@ -210,7 +211,7 @@ public class OnlineChecker implements Checker {
                 throw new RuntimeException(e);
             }
             txnEntries.removeAll(toRemove);
-            System.out.println(toRemove.size() + " entries are removed. " + txnEntries.size() + " entries are left");
+//            System.out.println(toRemove.size() / 2 + " txns are removed. " + txnEntries.size() / 2 + " txns are left");
         }
         return toRemove.size();
     }

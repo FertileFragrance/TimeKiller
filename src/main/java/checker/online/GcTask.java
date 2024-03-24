@@ -2,12 +2,15 @@ package checker.online;
 
 import checker.OnlineChecker;
 import history.History;
+import info.Arg;
 
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class GcTask implements Runnable {
     public static Lock gcLock = new ReentrantLock();
+    public static volatile boolean doGc = false;
+    public static volatile long nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
 
     private final OnlineChecker onlineChecker;
     private final History<?, ?> history;
@@ -22,17 +25,16 @@ public class GcTask implements Runnable {
     @Override
     public void run() {
         while (true) {
-            gcLock.lock();
-            int size = onlineChecker.gc(history);
-            gcLock.unlock();
-            if (size > 50) {
-                System.gc();
-            } else {
-                try {
-                    Thread.sleep(200);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+            if (doGc || history.getTransactionEntries().size() >= Arg.TXN_START_GC * 2
+                    && System.currentTimeMillis() >= nextGcTime) {
+                doGc = false;
+                gcLock.lock();
+                int size = onlineChecker.gc(history);
+                gcLock.unlock();
+                if (size > 0) {
+                    System.gc();
                 }
+                nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
             }
         }
     }

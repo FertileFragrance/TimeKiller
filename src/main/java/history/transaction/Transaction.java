@@ -5,10 +5,7 @@ import info.Arg;
 import violation.EXT;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class Transaction<KeyType, ValueType> implements Serializable {
     @JSONField(name = "tid")
@@ -160,17 +157,36 @@ public class Transaction<KeyType, ValueType> implements Serializable {
                             if (!extViolation.getFormerTxnId().equals(tidVal.getLeft())) {
                                 extViolation.setFormerTxnId(tidVal.getLeft());
                                 extViolation.setFormerValue(tidVal.getRight());
+                                if (Arg.LOG_EXT_FLIP) {
+                                    System.out.println("EXT updated when rechecking "
+                                            + transactionId + " on " + k + " at " + System.currentTimeMillis());
+                                }
                             }
                             addANewOne = false;
                             break;
                         }
                     }
                     if (addANewOne) {
-                        extViolations.add(new EXT<>(tidVal.getLeft(), this, k, tidVal.getRight(), v));
+                        EXT<KeyType, ValueType> ext = new EXT<>(tidVal.getLeft(), this, k, tidVal.getRight(), v);
+                        extViolations.add(ext);
+                        if (Arg.LOG_EXT_FLIP) {
+                            System.out.println("EXT created when rechecking "
+                                    + transactionId + " on " + k + " at " + System.currentTimeMillis());
+                        }
                     }
                 } else {
                     // remove a potential EXT violation
-                    extViolations.removeIf(extViolation -> extViolation.getKey().equals(k));
+                    Iterator<EXT<KeyType, ValueType>> it = extViolations.iterator();
+                    while (it.hasNext()) {
+                        EXT<KeyType, ValueType> extViolation = it.next();
+                        if (extViolation.getKey().equals(k)) {
+                            it.remove();
+                            if (Arg.LOG_EXT_FLIP) {
+                                System.out.println("EXT removed when rechecking "
+                                        + transactionId + " on " + k + " at " + System.currentTimeMillis());
+                            }
+                        }
+                    }
                 }
             }
             intKeys.put(k, v);

@@ -12,4 +12,8 @@ public class Arg {
     public static long TIMEOUT_DELAY = 5000L;
     public static boolean USE_CTS_AS_RTTS = false;
     public static long DURATION_IN_MEMORY = 10000L;
+    public static boolean LOG_EXT_FLIP = false;
+    public static int TXN_START_GC = 10000;
+    public static int MAX_TXN_IN_MEM = 50000;
+    public static long GC_INTERVAL = 10000L;
 }
