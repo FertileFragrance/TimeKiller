@@ -10,12 +10,12 @@ import checker.FastChecker;
 import checker.GcChecker;
 import history.History;
 import org.apache.commons.io.FileUtils;
-import reader.JSONFileGcReader;
+import reader.KVGcReader;
 import reader.OnlineReader;
 import violation.Violation;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.tuple.Pair;
-import reader.JSONFileFastReader;
+import reader.KVFastReader;
 import reader.Reader;
 
 import java.io.*;
@@ -196,10 +196,10 @@ public class TimeKiller {
             System.exit(1);
         } else {
             if ("fast".equals(Arg.MODE)) {
-                reader = new JSONFileFastReader();
+                reader = new KVFastReader();
                 checker = new FastChecker();
             } else if ("gc".equals(Arg.MODE)) {
-                reader = new JSONFileGcReader();
+                reader = new KVGcReader();
                 checker = new GcChecker();
             }
         }

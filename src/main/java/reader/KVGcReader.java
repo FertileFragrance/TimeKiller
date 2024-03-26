@@ -1,32 +1,29 @@
 package reader;
 
+import info.*;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONReader;
 import history.History;
-import history.transaction.HybridLogicalClock;
-import history.transaction.OpType;
-import history.transaction.Operation;
-import history.transaction.Transaction;
+import history.transaction.*;
+import org.apache.commons.lang3.tuple.Pair;
 import violation.SESSION;
 import violation.Violation;
-import info.*;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class JSONFileFastReader implements Reader<Long, Long> {
+public class KVGcReader implements Reader<Long, Long> {
     private Transaction<Long, Long> initialTxn;
-    private HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten;
+    private HashMap<Long, Pair<String, Long>> frontierTidVal;
 
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(Object filepath) {
         Stats.LOADING_START = System.currentTimeMillis();
 
-        ArrayList<Transaction<Long, Long>> txns = null;
+        ArrayList<TransactionEntry<Long, Long>> txnEntries = null;
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
         long maxKey = Long.MIN_VALUE;
@@ -36,8 +33,9 @@ public class JSONFileFastReader implements Reader<Long, Long> {
             JSONReader jsonReader = new JSONReader(new FileReader((String) filepath));
             JSONArray jsonArray = (JSONArray) jsonReader.readObject();
             int size = jsonArray.size();
-            txns = new ArrayList<>(size + 1);
-            txns.add(new Transaction<>(null, null, null, null, null));
+            txnEntries = new ArrayList<>(2 * size + 2);
+            txnEntries.add(new TransactionEntry<>(null, TransactionEntry.EntryType.START, null));
+            txnEntries.add(new TransactionEntry<>(null, TransactionEntry.EntryType.COMMIT, null));
             for (int i = 0; i < size; i++) {
                 JSONObject jsonObject = jsonArray.getJSONObject(i);
                 String sid = jsonObject.getString("sid");
@@ -75,34 +73,38 @@ public class JSONFileFastReader implements Reader<Long, Long> {
                     violations.add(new SESSION<>(lastInSession.get(sid), txn, sid));
                 }
                 lastInSession.put(sid, txn);
-                txns.add(txn);
+                txnEntries.add(new TransactionEntry<>(txn, TransactionEntry.EntryType.START, txn.getStartTimestamp()));
+                txnEntries.add(new TransactionEntry<>(txn, TransactionEntry.EntryType.COMMIT, txn.getCommitTimestamp()));
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
         System.gc();
-        assert txns != null;
+        assert txnEntries != null;
         createInitialTxn(maxKey);
-        txns.set(0, initialTxn);
+        txnEntries.set(0, new TransactionEntry<>(initialTxn, TransactionEntry.EntryType.START,
+                initialTxn.getStartTimestamp()));
+        txnEntries.set(1, new TransactionEntry<>(initialTxn, TransactionEntry.EntryType.COMMIT,
+                initialTxn.getCommitTimestamp()));
 
         Stats.LOADING_END = System.currentTimeMillis();
 
         long opCount = readOpCount + writeOpCount;
         System.out.println("==========[ Txn Info Statistics ]==========");
-        System.out.printf("|  Number of txns:          %-10d s  |\n", txns.size() - 1);
-        System.out.printf("|  Number of sessions:      %-10d s  |\n", lastInSession.size());
-        System.out.printf("|  Maximum key:             %-10d s  |\n", maxKey);
-        System.out.printf("|  Avg num of ops per txn:  %-10f s  |\n", (double) opCount / (txns.size() - 1));
-        System.out.printf("|  Read op percentage:      %-10f s  |\n", (double) readOpCount / opCount);
-        System.out.printf("|  Write op percentage:     %-10f s  |\n", (double) writeOpCount / opCount);
+        System.out.printf("|  Number of txns:          %-10d    |\n", txnEntries.size() / 2 - 1);
+        System.out.printf("|  Number of sessions:      %-10d    |\n", lastInSession.size());
+        System.out.printf("|  Maximum key:             %-10d    |\n", maxKey);
+        System.out.printf("|  Avg num of ops per txn:  %-10f    |\n", (double) opCount / (txnEntries.size() / 2 - 1));
+        System.out.printf("|  Read op percentage:      %-10f    |\n", (double) readOpCount / opCount);
+        System.out.printf("|  Write op percentage:     %-10f    |\n", (double) writeOpCount / opCount);
         System.out.println("===========================================");
 
-        return Pair.of(new History<>(txns, keyWritten.size(), null,
-                keyWritten, null), violations);
+        return Pair.of(new History<>(null, initialTxn.getExtWriteKeys().size(),
+                txnEntries, null, frontierTidVal), violations);
     }
 
     private void createInitialTxn(long maxKey) {
-        keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+        frontierTidVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
@@ -114,9 +116,7 @@ public class JSONFileFastReader implements Reader<Long, Long> {
         for (long key = 0; key <= maxKey; key++) {
             operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
             extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
-            ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
-            writeToKeyTxns.add(initialTxn);
-            keyWritten.put(key, writeToKeyTxns);
+            frontierTidVal.put(key, Pair.of("initial", Arg.INITIAL_VALUE_LONG));
         }
     }
 }
