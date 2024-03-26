@@ -10,13 +10,11 @@ import checker.FastChecker;
 import checker.GcChecker;
 import history.History;
 import org.apache.commons.io.FileUtils;
-import reader.KVGcReader;
-import reader.OnlineReader;
+import reader.*;
+import reader.Reader;
 import violation.Violation;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.tuple.Pair;
-import reader.KVFastReader;
-import reader.Reader;
 
 import java.io.*;
 import java.net.InetSocketAddress;
@@ -71,6 +69,8 @@ public class TimeKiller {
                 .desc("the initial value of keys before all writes [default: null]").build());
         options.addOption(Option.builder().longOpt("mode").hasArg(true).type(String.class)
                 .desc("choose a mode to run TimeKiller [default: fast] [possible values: fast, gc, online]").build());
+        options.addOption(Option.builder().longOpt("data_model").hasArg(true).type(String.class)
+                .desc("the data model of transaction operations [default: kv] [possible values: kv, list]").build());
         options.addOption(Option.builder().longOpt("fix").desc("fix violations if found").build());
         options.addOption(Option.builder().longOpt("num_per_gc").hasArg(true).type(Integer.class)
                 .desc("the number of checked transactions for each gc [default: 20000]").build());
@@ -109,6 +109,11 @@ public class TimeKiller {
             Arg.INITIAL_VALUE = commandLine.getOptionValue("initial_value", null);
             if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
                 Arg.INITIAL_VALUE_LONG = Long.parseLong(Arg.INITIAL_VALUE);
+            }
+            Arg.DATA_MODEL = commandLine.getOptionValue("data_model", "kv");
+            if (!"kv".equals(Arg.DATA_MODEL) && !"list".equals(Arg.DATA_MODEL)) {
+                System.out.println("Arg for --data_model is invalid");
+                printAndExit(options);
             }
             if (commandLine.hasOption("fix")) {
                 Arg.FIX = true;
@@ -196,10 +201,18 @@ public class TimeKiller {
             System.exit(1);
         } else {
             if ("fast".equals(Arg.MODE)) {
-                reader = new KVFastReader();
+                if ("kv".equals(Arg.DATA_MODEL)) {
+                    reader = new KVFastReader();
+                } else if ("list".equals(Arg.DATA_MODEL)) {
+                    reader = new ListFastReader();
+                }
                 checker = new FastChecker();
             } else if ("gc".equals(Arg.MODE)) {
-                reader = new KVGcReader();
+                if ("kv".equals(Arg.DATA_MODEL)) {
+                    reader = new KVGcReader();
+                } else if ("list".equals(Arg.DATA_MODEL)) {
+                    reader = new ListGcReader();
+                }
                 checker = new GcChecker();
             }
         }
