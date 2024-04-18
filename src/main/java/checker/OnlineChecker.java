@@ -202,6 +202,9 @@ public class OnlineChecker implements Checker {
                 tidEntryWhetherGc.set(i, Pair.of(tidEntry, true));
             }
             inMemoryIndex++;
+            if (toRemove.size() >= 16000) {
+                break;
+            }
         }
         if (!toRemove.isEmpty()) {
             try (Output output = new Output(new GZIPOutputStream(Files.newOutputStream(Paths.get(path))))) {

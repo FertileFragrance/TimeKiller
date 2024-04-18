@@ -323,6 +323,7 @@ public class TimeKiller {
                     } finally {
                         GcTask.gcLock.unlock();
                     }
+//                    System.out.println(System.currentTimeMillis());
                 }
             } catch (InterruptedException e) {
                 e.printStackTrace();
