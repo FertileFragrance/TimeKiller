@@ -32,7 +32,7 @@ java -jar TimeKiller.jar --history_path examples/quick-start.json
 The output is like this:
 
 ```text
-Checking quick-start.json
+Checking examples/quick-start.json
 ==========[ Txn Info Statistics ]==========
 |  Number of txns:          100036        |
 |  Number of sessions:      50            |
