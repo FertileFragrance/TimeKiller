@@ -120,7 +120,7 @@ For key-value histories, the input json file must have the following format.
             {"t": "w", "k": 4, "v": 5},
             {"t": "r", "k": 8, "v": 3}
         ]
-    },
+    }
 ]
 ```
 
@@ -166,7 +166,7 @@ Under `online` mode:
 
 Aion checks transactions sent through HTTP requests. Each request is sent to `http://127.0.0.1:23333/check` (by default) via POST method carrying json data of transactions. If `--use_cts_as_rtts` is set to `true`, the json data has the same format as the key-value histories accepted by Chronos described above. Otherwise, for each transaction in the json array, it needs an additional field `rtts`, a millisecond timestamp.
 
-Note that the json data must be a json array, even if the request carries only one transaction.
+Note that the json data must be a json array, even if the request carries only one transaction. This is designed to encourage the use of batch processing.
 
 ### Detailed description of options
 
