@@ -11,6 +11,7 @@ a fast white-box snapshot isolation (SI) checker based on timestamps
 Clone this repository, enter the project root directory, and run
 
 ```sh
+mvn install
 mvn package
 ```
 
@@ -88,7 +89,7 @@ Note that these options cannot be arbitrarily combined as shown in the descripti
 
 ### Run Chronos
 
-Set `--mode` to `fast` or `gc ` to run Chronos, performing a one-shot offline checking of an existing history.
+Set `--mode` to `fast` or `gc` to run Chronos, performing a one-shot offline checking of an existing history.
 
 Under `fast` or `gc` mode:
 
@@ -104,7 +105,7 @@ Under `gc` mode:
 * `--num_per_gc` is a valid option.
 * All other options will be ignored.
 
-### Input format
+### Input file format
 
 For key-value histories, the input json file must have the following format.
 
