@@ -1,10 +1,14 @@
 # TimeKiller (Chronos and Aion)
 a fast white-box snapshot isolation (SI) checker based on timestamps
 
+a [technical report](./technical-report-for-paper-454.pdf) is available to help you have a more comprehensive understanding
+
 ## Requirements
 
-* JDK 8 (or above)
+* JDK 11 (or above)
 * Maven
+
+If you want to reproduce, you don't need to install it at all. Please check the reproduce section directly. TimeKiller program is provided in every experiment. Don't worry because it is only less than 4MB.
 
 ## Install
 
@@ -215,5 +219,22 @@ Note that the transactions in a history should be in session order. Otherwise th
 
 ## Reproduce
 
+We use [elle-cli](https://github.com/ligurio/elle-cli) to run [Elle](https://github.com/jepsen-io/elle) on key-value and list histories. You don't need to install it yourself. We provide a packaged program `elle-cli.jar` recording its runtime by adding two timestamps when it starts and ends. You need to manually record this runtime if you install it yourself.
 
+As black-box SI checking tools, [PolySI](https://github.com/hengxin/PolySI-PVLDB2023-Artifacts/tree/main/artifact/PolySI) and [Viper](https://github.com/Khoury-srg/Viper) struggle to have comparable performance to our white-box tools. Installing and running them might be a time consuming work, so we don't provide scripts for running them. But we provide the data for all the tools. You can try them on a small history following the instructions on their homepages using our history data if you're interested.
+
+For every experiment we provide `TimeKiller.jar` (and `elle-cli.jar` if required) so you don't need to install it in advance. But you need Java 11 (or above) and Linux environment to run the scripts.
+
+Data, programs and scripts can be downloaded from xxxxxx
+
+### Fig 3
+
+Download the `fig3.zip`, decompress it, enter `fig3/` directory, and run
+
+```sh
+./run-chronos.sh
+./run-ellekv.sh
+```
+
+### Fig 4
 
