@@ -8,7 +8,7 @@ a [technical report](./technical-report-for-paper-454.pdf) is available to help 
 * JDK 11 (or above)
 * Maven
 
-If you want to reproduce, you don't need to install it at all. Please check the reproduce section directly. TimeKiller program is provided in every experiment. Don't worry because it is only less than 4MB.
+If you want to reproduce, you don't need to install it at all. Please check the <a href="#reproduce">reproduce section</a> directly. TimeKiller program is provided in every experiment. Don't worry because it is only less than 4MB.
 
 ## Install
 
@@ -217,7 +217,7 @@ Note that all time related options are in milliseconds.
 
 Note that the transactions in a history should be in session order. Otherwise there is no point in checking SESSION.
 
-## Reproduce
+## <span id="reproduce">Reproduce</span>
 
 We use [elle-cli](https://github.com/ligurio/elle-cli) to run [Elle](https://github.com/jepsen-io/elle) on key-value and list histories. You don't need to install it yourself. We provide a packaged program `elle-cli.jar` recording its runtime by adding two timestamps when it starts and ends. You need to manually record this runtime if you install it yourself.
 
@@ -225,7 +225,7 @@ As black-box SI checking tools, [PolySI](https://github.com/hengxin/PolySI-PVLDB
 
 For every experiment we provide `TimeKiller.jar` (and `elle-cli.jar` if required) so you don't need to install it in advance. But you need Java 11 (or above) and Linux environment to run the scripts.
 
-Data, programs and scripts can be downloaded from xxxxxx
+Data, programs and scripts can be downloaded from [Google Drive](https://drive.google.com/drive/folders/1jU-TADrRDq-SDxyHFN2Hcyk6RnXG0YEq).
 
 ### Fig 3
 
@@ -236,5 +236,25 @@ Download the `fig3.zip`, decompress it, enter `fig3/` directory, and run
 ./run-ellekv.sh
 ```
 
+Note that it may take some time for `elle-cli.jar` to load and exit, so your somatosensory running time may be longer than the actual running time. This applies to all the experiments that use `elle-cli.jar`.
+
 ### Fig 4
+
+Download the `fig4.zip`, decompress it and enter `fig4/` directory.
+
+To reproduce Figure 4a, run
+
+```sh
+./run-chronoskv.sh
+./run-ellekv.sh
+```
+
+To reproduce Figure 4b, run
+
+```sh
+./run-chronoslist.sh
+./run-ellelist.sh
+```
+
+### Fig 5
 
