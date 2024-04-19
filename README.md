@@ -160,16 +160,60 @@ Set `--mode` to `online` to run Aion, performing a continuous online checking by
 Under `online` mode:
 
 * `--enable_session, --initial_value` are valid options just like Chronos.
-* `--port, --timeout_delay, --use_cts_as_rtts, --duration_in_memory, --log_ext_flip, --txn_start_gc, --max_txn_in_mem, --gc_interval` are valid options **only** under `online` mode.
+* `--port, --timeout_delay, --log_ext_flip, --use_cts_as_rtts, --duration_in_memory, --txn_start_gc, --max_txn_in_mem, --gc_interval` are valid options **only** under `online` mode.
 * All other options will be ignored.
 
 ### HTTP request format
 
-Aion checks transactions sent through HTTP requests. Each request is sent to `http://127.0.0.1:23333/check` (by default) via POST method carrying json data of transactions. If `--use_cts_as_rtts` is set to `true`, the json data has the same format as the key-value histories accepted by Chronos described above. Otherwise, for each transaction in the json array, it needs an additional field `rtts`, a millisecond timestamp.
+Aion checks transactions sent through HTTP requests. Each request is sent to `http://127.0.0.1:23333/check` (by default) via POST method carrying json data of transactions. If `--use_cts_as_rtts` is set to `true`, the json data has the same format as the key-value histories accepted by Chronos described above. Otherwise, for each transaction in the json array, it needs an additional field `rtts` meaning real-time timestamp, a millisecond timestamp.
 
 Note that the json data must be a json array, even if the request carries only one transaction. This is designed to encourage the use of batch processing.
 
 ### Detailed description of options
 
 If you are confused by the numerous configuration options, don’t worry. After reading this section you will have a comprehensive and detailed understanding of them.
+
+**Meta** option:
+
+* `--mode`: Set it to `fast` (by default) or `gc` to run Chronos (offline checking), or set it to `online` to run Aion (online checking). As the name suggests, Chronos won't perform garbage collection (GC) under `fast` mode to save time. While under `gc` mode, Chronos will perform GC every time it checks a certain number of transactions (configured by `--num_per_gc`). Aion always enables GC to avoid unlimited memory growth (configured by multiple options).
+
+**Generic** options (valid for both Chronos and Aion):
+
+* `--enable_session`: If set to `true` (by default), Chronos or Aion will use the `sts` and `cts` of transactions in the input history to check the SESSION axiom. Informally, SESSION indicates that a later transaction must start after the previous transactions in the same session (having the same `sid`). Otherwise, SESSION will not be checked.
+* `--initial_value`: It is the value read from a key before any operation writes on that key. In most cases, it is `null` (by default) or `0`, determined by the running database and the processing logic to get the history.
+
+**Chronos** options:
+
+* `--history_path`: It **must be specified** to let Chronos know which history to check. And the file must have `.json` extension.
+* `--data_model`: Chronos supports two types of data models of the operations in a history (of course it is extensible to support more), `kv` (by default) and `list`.
+* `--fix`: If added, Chronos will try to fix the history containing violations of SI (and SESSION) by modifying `sts` and `cts` of the transactions related to the violations, and outputs a json file named `FIXED-<input_filename>` in the directory of the input file. If no violations are found, nothing will happen.
+* `--num_per_gc`: It is used to set how many transactions are checked to perform a GC, so it is valid **only** under `gc` mode. For example, when it is set to `20000` (by default), Chronos will do a GC after checking the 20000th, 40000th, 60000th, etc. transactions.
+
+**Aion** options:
+
+* `--port`: It is the port the HTTP server to receive requests is running on. The default port is `23333`.
+
+The following 2 options configure re-checking.
+
+* `--timeout_delay`: When receiving a new coming transaction with a smaller commit timestamp, Aion will re-check the previously arrived transactions that have a greater start timestamp. But not all these transactions will be re-checked. This option sets a maximum time window. For example, if set to `5000` (by default), Aion will not re-check the transactions that were first checked 5s ago. If a transaction will not be re-checked any more, we say it **expires**.
+* `--log_ext_flip`: With this option, Aion will print a log when a flip-flop happens (i.e. Aion overturned the previous judgment of an EXT violation due to re-checking).
+
+The following 2 options configure when a transaction can be GC.
+
+* `--use_cts_as_rtts`: Aion needs a real-time timestamp of each transaction to decide whether to GC it (introduced later). It is intended to be the physical time when the transaction commits. If the database uses physical millisecond timestamps to implement transactions, this option can be set to `true` (default is `false`), and Aion uses the physical part of `cts` as the `rtts`.
+* `--duration_in_memory`: When it is going to GC a transaction, Aion will calculate how long the current timestamp is from `rtts` of the transaction. Only when the time set by this option (default is `10000`) is exceeded and the transaction has expired will Aion GC it.
+
+The following 3 options configure how Aion GC transactions.
+
+* `--txn_start_gc`: Only when the number of in-memory transactions reaches the value of this option (default is `10000`) will Aion starts to do a GC. If the number is smaller, no GC will be performed.
+* `--max_txn_in_mem`: If the number of in-memory transactions reaches the value of this option (default is `50000`), Aion will immediately call a GC regardless of the time interval (the next option).
+* `--gc_interval`: If the number of in-memory transactions is between the values of the above two options, Aion will call a GC periodically according to this option (default is `10000`).
+
+Note that all time related options are in milliseconds.
+
+Note that the transactions in a history should be in session order. Otherwise there is no point in checking SESSION.
+
+## Reproduce
+
+
 
