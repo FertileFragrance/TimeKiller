@@ -8,7 +8,7 @@ a [technical report](./technical-report-for-paper-454.pdf) is available to help 
 * JDK 11 (or above)
 * Maven
 
-If you want to reproduce, you don't need to install it at all. Please check the <a href="#reproduce">reproduce section</a> directly. TimeKiller program is provided in every experiment. Don't worry because it is only less than 4MB.
+If you want to reproduce, you don't need to install it at all. Please check the [reproduce section](#reproduce) directly. TimeKiller program is provided in every experiment. Don't worry because it is only less than 4MB.
 
 ## Install
 
@@ -217,7 +217,7 @@ Note that all time related options are in milliseconds.
 
 Note that the transactions in a history should be in session order. Otherwise there is no point in checking SESSION.
 
-## <span id="reproduce">Reproduce</span>
+## <a name='reproduce' />Reproduce
 
 We use [elle-cli](https://github.com/ligurio/elle-cli) to run [Elle](https://github.com/jepsen-io/elle) on key-value and list histories. You don't need to install it yourself. We provide a packaged program `elle-cli.jar` recording its runtime by adding two timestamps when it starts and ends. You need to manually record this runtime if you install it yourself.
 
