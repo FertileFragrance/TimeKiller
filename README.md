@@ -200,7 +200,7 @@ The following 2 options configure re-checking.
 
 The following 2 options configure when a transaction can be GC.
 
-* `--use_cts_as_rtts`: Aion needs a real-time timestamp of each transaction to decide whether to GC it (introduced later). It is intended to be the physical time when the transaction commits. If the database uses physical millisecond timestamps to implement transactions, this option can be set to `true` (default is `false`), and Aion uses the physical part of `cts` as the `rtts`.
+* `--use_cts_as_rtts`: Aion needs a real-time timestamp of each transaction to decide whether to GC it (introduced in the next option). It is intended to be the physical time when the transaction commits. If the database uses physical millisecond timestamps to implement transactions, this option can be set to `true` (default is `false`), and Aion uses the physical part of `cts` as the `rtts`.
 * `--duration_in_memory`: When it is going to GC a transaction, Aion will calculate how long the current timestamp is from `rtts` of the transaction. Only when the time set by this option (default is `10000`) is exceeded and the transaction has expired will Aion GC it.
 
 The following 3 options configure how Aion GC transactions.
