@@ -221,9 +221,9 @@ Note that the transactions in a history should be in session order. Otherwise th
 
 We use [elle-cli](https://github.com/ligurio/elle-cli) to run [Elle](https://github.com/jepsen-io/elle) on key-value and list histories. You don't need to install it yourself. We provide a packaged program `elle-cli.jar` recording its runtime by adding two timestamps when it starts and ends. You need to manually record this runtime if you install it yourself.
 
-As black-box SI checking tools, [PolySI](https://github.com/hengxin/PolySI-PVLDB2023-Artifacts/tree/main/artifact/PolySI) and [Viper](https://github.com/Khoury-srg/Viper) struggle to have comparable performance to our white-box tools. Installing and running them might be a time consuming work, so we don't provide scripts for running them. But we provide the data for all the tools. You can try them on a small history following the instructions on their homepages using our history data if you're interested.
+As black-box SI checking tools, [PolySI](https://github.com/hengxin/PolySI-PVLDB2023-Artifacts/tree/main/artifact/PolySI) and [Viper](https://github.com/Khoury-srg/Viper) struggle to have comparable performance to our white-box tools. Installing and running them might be a time consuming work, so we don't provide automated scripts for running them. But we provide the data for all the tools. You can try them on a small history following the instructions on their homepages using our history data if you're interested.
 
-For every experiment we provide `TimeKiller.jar` (and `elle-cli.jar` if required) so you don't need to install it in advance. But you need Java 11 (or above) and Linux environment to run the scripts.
+For every experiment we provide `TimeKiller.jar` (and `elle-cli.jar` if required) so you don't need to install it in advance. But you need Java 11 (or above) and Linux environment to run the scripts (some may require Python environment).
 
 Data, programs and scripts can be downloaded from [Google Drive](https://drive.google.com/drive/folders/1jU-TADrRDq-SDxyHFN2Hcyk6RnXG0YEq).
 
@@ -267,4 +267,19 @@ To reproduce subfigure a/b/c/d/e/f, run
 ```
 
 ### Fig 6
+
+Download the `fig6.zip`, decompress it and enter `fig6/` directory.
+
+Running the scripts of this experiment requires `python3` (or you can modify `python3` to `python` in the scripts).
+
+To reproduce subfigure a/b/c/d/e/f, run
+
+```sh
+./run-{a|b|c|d|e|f}-chronos.sh
+./run-{a|b|c|d|e|f}-ellekv.sh
+```
+
+Note that this experiment requires there are no other running `java` processes when a script is running. It also means that the scripts cannot be running at the same time.
+
+### Fig 7
 
