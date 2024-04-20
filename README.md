@@ -258,3 +258,13 @@ To reproduce Figure 4b, run
 
 ### Fig 5
 
+Download the `fig5.zip`, decompress it and enter `fig5/` directory.
+
+To reproduce subfigure a/b/c/d/e/f, run
+
+```sh
+./run-{a|b|c|d|e|f}.sh
+```
+
+### Fig 6
+
