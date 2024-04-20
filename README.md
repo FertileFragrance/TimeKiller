@@ -301,3 +301,15 @@ Download the `fig8.zip`, decompress it, enter `fig8/` directory, and run
 
 ### Fig 9
 
+Download the `fig9.zip`, decompress it, enter `fig9/` directory, and run
+
+```sh
+./run.sh
+```
+
+Running this script requires `python3` (or you can modify it to `python` in the script), and this experiment also requires there are no other running `java` processes when the script is running.
+
+Moreover, you need `numpy` and `matplotlib` in your Python environment.
+
+When the script finishes, you will get `gc-{10k,20k,50k,infinity}.png` in the `fig9/` directory depicting memory usage over time under different GC frequencies.
+
