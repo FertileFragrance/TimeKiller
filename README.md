@@ -283,3 +283,21 @@ Note that this experiment requires there are no other running `java` processes w
 
 ### Fig 7
 
+Download the `fig7.zip`, decompress it and enter `fig7/` directory.
+
+To reproduce subfigure a/b/c/d/e/f, run
+
+```sh
+./run-{a|b|c|d|e|f}.sh
+```
+
+### Fig 8
+
+Download the `fig8.zip`, decompress it, enter `fig8/` directory, and run
+
+```sh
+./run.sh
+```
+
+### Fig 9
+
