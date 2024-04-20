@@ -11,6 +11,13 @@ public class TransactionEntry<KeyType, ValueType> implements Comparable<Transact
         if (diff != 0) {
             return diff;
         }
+        if (transaction.getTransactionId().equals(o.transaction.getTransactionId())) {
+            if (entryType == EntryType.START) {
+                return -1;
+            } else {
+                return 1;
+            }
+        }
         if (entryType == EntryType.COMMIT && o.entryType == EntryType.START) {
             return -1;
         }
