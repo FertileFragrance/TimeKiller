@@ -313,3 +313,77 @@ Moreover, you need `numpy` and `matplotlib` in your Python environment.
 
 When the script finishes, you will get `gc-{10k,20k,50k,infinity}.png` in the `fig9/` directory depicting memory usage over time under different GC frequencies.
 
+### Fig 10
+
+Download the `fig10.zip`, decompress it and enter `fig10/` directory.
+
+To calculate TPS of Aion, we record the timestamp when each transaction is checked for the first time, so the `TimeKiller.jar` for this experiment is a special edition. Please use the file in the `fig10/` directory. If you want to install it yourself, uncomment `System.out.println(System.currentTimeMillis());` in the `runOnlineMode()` method in [TimeKiller.java](./src/main/java/TimeKiller.java) and [reinstall](#Install) it.
+
+You need `json` and `requests` in your Python environment for this experiment. Also, this experiment requires a lot of memory, preferably 64GB or more.
+
+To reproduce Figure 10a, first start Aion.
+
+```sh
+java -XX:+UseG1GC -Xmx48G -jar TimeKiller.jar --mode online --initial_value 0 --timeout_delay 10000 --use_cts_as_rtts true --txn_start_gc 200000 --max_txn_in_mem 700000 --gc_interval 20000 > aion-tps.log
+```
+
+Then start another session, run `send_request_08ops.py` (to simulate requests of database transactions) to send requests to Aion.
+
+```sh
+python send_request_08ops.py 08ops.json > db-tps.log
+```
+
+When all requests are sent (i.e. the python script ends), you can check the TPS of database and Aion.
+
+```sh
+python db_tps.py db-tps.log 10000
+python aion_tps.py aion-tps.log 10000
+```
+
+The step to reproduce Figure 10b is the same as Figure 10a, except that the parameters are different.
+
+First start Aion.
+
+```sh
+java -XX:+UseG1GC -Xmx48G -jar TimeKiller.jar --mode online --initial_value 0 --timeout_delay 10000 --use_cts_as_rtts true --txn_start_gc 10000 --max_txn_in_mem 50000 --gc_interval 10000 > aion-tps.log
+```
+
+Then run `send_request_15ops.py` to send requests.
+
+```sh
+python send_request_15ops.py 15ops.json > db-tps.log
+```
+
+When it finishes, use the two scripts to see the two throughputs.
+
+```sh
+python db_tps.py db-tps.log 60000
+python aion_tps.py aion-tps.log 60000
+```
+
+### Fig 11-14
+
+These experiments require a Dgraph cluster, a generator to generate transactions, a runner to connect to Dgraph and run the transactions, and a collector to collect the information of the committed transactions and send them to Aion. Actually they are necessary components to run all the experiments. For the experiments on Chronos, you can skip these procedures because you only need the json history file as the input of Chronos which is produced by the collector. But these steps cannot be skipped to experiment on Aion, which is a very cumbersome work. So here we only describe the high-level steps.
+
+Step 1: Deploy a 3-node Dgraph cluster following its [documentation](https://dgraph.io/docs/deploy/).
+
+Step 2: Install [dbcop](https://gitlab.math.univ-paris-diderot.fr/ranadeep/dbcop) to generate workloads of transactions. You may need to do some format conversion for runner to recognize the transactions.
+
+Step 3: Implement a runner based on [Jepsen](https://github.com/jepsen-io/jepsen). You can also use Jepsen's generator instead of dbcop, which is slightly different from our workloads. Runner sends a transaction to collector when it commits by HTTP a request.
+
+Step 4: Write a collector to receive requests of committed transactions from the runner. Every time it gets 500 transactions, collector sends them to Aion in a batch.
+
+We provide a collector `collect-dgraph.py` as an example which also supports injecting normally distributed delays used in Figure 12 and 13.
+
+```sh
+python collect-dgraph.py <total_txn_num>
+python collect-dgraph.py <total_txn_num> <mu> <sigma> <interval_between_txns>
+```
+
+To reproduce each of these experiments, first start Dgraph cluster, Aion (just with default parameters) and collector, then start generator and runner until it finishes.
+
+To reproduce Figure 11, you need to monitor the memory usage of Aion when it's running.
+
+To reproduce Figure 12 and 13, you need to add `--log_ext_flip` to run Aion and write some scripts parsing the log to count the number of flip-flops and the time spent on rectifying the EXT violations.
+
+To reproduce Figure 14, you need to record the time when the runner starts and ends executing the transaction to calculate the database throughput. To run without collecting history, don't send a transaction to collector with it commits.
