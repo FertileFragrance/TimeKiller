@@ -1,4 +1,4 @@
-package reader;
+package reader.si;
 
 import history.transaction.*;
 import info.Arg;
@@ -7,6 +7,7 @@ import com.alibaba.fastjson.JSONArray;
 import history.History;
 import checker.online.GcUtil;
 import org.apache.commons.lang3.tuple.Pair;
+import reader.Reader;
 import violation.NOCONFLICT;
 import violation.SESSION;
 import violation.Violation;
@@ -15,7 +16,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
-public class OnlineReader implements Reader<Long, Long> {
+public class SIOnlineReader implements Reader<Long, Long> {
     private History<Long, Long> history;
     private final HashMap<String, Transaction<Long, Long>> lastInSession = new HashMap<>(41);
     private long maxKey = 1000;

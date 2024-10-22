@@ -1,13 +1,13 @@
-package reader;
+package reader.si;
 
+import info.*;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONReader;
 import history.History;
 import history.transaction.*;
-import info.Arg;
-import info.Stats;
 import org.apache.commons.lang3.tuple.Pair;
+import reader.Reader;
 import violation.SESSION;
 import violation.Violation;
 
@@ -16,10 +16,9 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class ListGcReader implements Reader<Long, Long> {
+public class SIKVGcReader implements Reader<Long, Long> {
     private Transaction<Long, Long> initialTxn;
     private HashMap<Long, Pair<String, Long>> frontierTidVal;
-
 
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(Object filepath) {
@@ -56,19 +55,12 @@ public class ListGcReader implements Reader<Long, Long> {
                     String type = jsonOperation.getString("t");
                     Long key = jsonOperation.getLong("k");
                     maxKey = Math.max(maxKey, key);
-                    if ("a".equalsIgnoreCase(type) || "append".equalsIgnoreCase(type)) {
-                        Long value = jsonOperation.getLong("v");
+                    Long value = jsonOperation.getLong("v");
+                    if ("w".equalsIgnoreCase(type) || "write".equalsIgnoreCase(type)) {
                         Operation<Long, Long> op = new Operation<>(OpType.write, key, value);
                         ops.add(op);
                         writeOpCount++;
                     } else if ("r".equalsIgnoreCase(type) || "read".equalsIgnoreCase(type)) {
-                        JSONArray jsonValues = jsonOperation.getJSONArray("v");
-                        Long value;
-                        if (jsonValues == null || jsonValues.isEmpty()) {
-                            value = Arg.INITIAL_VALUE_LONG;
-                        } else {
-                            value = jsonValues.getLong(jsonValues.size() - 1);
-                        }
                         Operation<Long, Long> op = new Operation<>(OpType.read, key, value);
                         ops.add(op);
                         readOpCount++;

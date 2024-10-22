@@ -36,43 +36,59 @@ public class History<KeyType, ValueType> {
 
         Stats.SORTING_START = System.currentTimeMillis();
 
-        if ("fast".equals(Arg.MODE)) {
-            this.transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
-            this.initialTxn = this.transactions.get(0);
-        } else if ("gc".equals(Arg.MODE)) {
-            Collections.sort(this.transactionEntries);
-            this.initialTxn = this.transactionEntries.get(0).getTransaction();
+        if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
+            if ("fast".equals(Arg.MODE)) {
+                this.transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
+                this.initialTxn = this.transactions.get(0);
+            } else if ("gc".equals(Arg.MODE)) {
+                Collections.sort(this.transactionEntries);
+                this.initialTxn = this.transactionEntries.get(0).getTransaction();
+            } else {
+                // Arg.MODE is online
+                this.initialTxn = this.transactionEntries.get(0).getTransaction();
+                tidEntryWhetherGc.add(Pair.of("initial-s", false));
+                tidEntryWhetherGc.add(Pair.of("initial-c", false));
+            }
         } else {
-            // Arg.MODE is online
-            this.initialTxn = this.transactionEntries.get(0).getTransaction();
-            tidEntryWhetherGc.add(Pair.of("initial-s", false));
-            tidEntryWhetherGc.add(Pair.of("initial-c", false));
+            if ("online".equals(Arg.MODE)) {
+                this.initialTxn = this.transactions.get(0);
+                tidEntryWhetherGc.add(Pair.of("initial", false));
+            } else {
+                this.transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
+                this.initialTxn = this.transactions.get(0);
+            }
         }
 
         Stats.SORTING_END = System.currentTimeMillis();
     }
 
     public void reset() {
-        if ("fast".equals(Arg.MODE)) {
-            transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
-            for (ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns : keyWritten.values()) {
-                ListIterator<Transaction<KeyType, ValueType>> it = writeToKeyTxns.listIterator(writeToKeyTxns.size());
-                while (it.hasPrevious()) {
-                    it.previous();
-                    if (it.nextIndex() > 0) {
-                        it.remove();
+        if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
+            if ("fast".equals(Arg.MODE)) {
+                transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
+                for (ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns : keyWritten.values()) {
+                    ListIterator<Transaction<KeyType, ValueType>> it = writeToKeyTxns.listIterator(writeToKeyTxns.size());
+                    while (it.hasPrevious()) {
+                        it.previous();
+                        if (it.nextIndex() > 0) {
+                            it.remove();
+                        }
                     }
                 }
+            } else if ("gc".equals(Arg.MODE)) {
+                transactionEntries.forEach(e -> {
+                    if (e.getEntryType() == TransactionEntry.EntryType.START) {
+                        e.setTimestamp(e.getTransaction().getStartTimestamp());
+                    } else {
+                        e.setTimestamp(e.getTransaction().getCommitTimestamp());
+                    }
+                });
+                Collections.sort(transactionEntries);
+                frontierTidVal.forEach((k, v) -> frontierTidVal.put(k,
+                        Pair.of(initialTxn.getTransactionId(), initialTxn.getOperations().get(0).getValue())));
             }
-        } else if ("gc".equals(Arg.MODE)) {
-            transactionEntries.forEach(e -> {
-                if (e.getEntryType() == TransactionEntry.EntryType.START) {
-                    e.setTimestamp(e.getTransaction().getStartTimestamp());
-                } else {
-                    e.setTimestamp(e.getTransaction().getCommitTimestamp());
-                }
-            });
-            Collections.sort(transactionEntries);
+        } else {
+            transactions.sort(Comparator.comparing(Transaction::getCommitTimestamp));
             frontierTidVal.forEach((k, v) -> frontierTidVal.put(k,
                     Pair.of(initialTxn.getTransactionId(), initialTxn.getOperations().get(0).getValue())));
         }

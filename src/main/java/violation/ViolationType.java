@@ -1,5 +1,5 @@
 package violation;
 
 public enum ViolationType {
-    SESSION, INT, EXT, NOCONFLICT
+    SESSION, INT, EXT, NOCONFLICT, TRANSVIS
 }

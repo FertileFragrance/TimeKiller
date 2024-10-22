@@ -1,15 +1,18 @@
-package checker;
+package checker.ser;
 
-import info.Arg;
+import checker.Checker;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
 import history.History;
 import history.transaction.OpType;
 import history.transaction.Operation;
 import history.transaction.Transaction;
+import info.Arg;
+import info.Stats;
+import org.apache.commons.lang3.tuple.Pair;
 import violation.EXT;
 import violation.INT;
-import violation.NOCONFLICT;
+import violation.TRANSVIS;
 import violation.Violation;
 
 import java.io.BufferedWriter;
@@ -18,16 +21,23 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Objects;
 
-public class FastChecker implements Checker {
+public class SERFastGcChecker implements Checker {
     @Override
     public <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history) {
         ArrayList<Violation> violations = new ArrayList<>();
         HashMap<Operation<KeyType, ValueType>, EXT<KeyType, ValueType>> incompleteExts = new HashMap<>(9);
-        HashMap<KeyType, ArrayList<Transaction<KeyType, ValueType>>> keyWritten = history.getKeyWritten();
+        HashMap<KeyType, Pair<String, ValueType>> frontierTidVal = history.getFrontierTidVal();
+        int checkedTxnCount = 0;
         for (int i = 1; i < history.getTransactions().size(); i++) {
             Transaction<KeyType, ValueType> currentTxn = history.getTransactions().get(i);
+            // check TRANSVIS
+            Transaction<KeyType, ValueType> lastCommittedTxn = history.getTransactions().get(i - 1);
+            if (currentTxn.getStartTimestamp().compareTo(lastCommittedTxn.getCommitTimestamp()) < 0) {
+                violations.add(new TRANSVIS<>(lastCommittedTxn, currentTxn));
+            }
             int opSize = currentTxn.getOperations().size();
             HashMap<KeyType, ValueType> intKeys = new HashMap<>(opSize * 4 / 3 + 1);
             HashMap<KeyType, ValueType> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
@@ -37,35 +47,27 @@ public class FastChecker implements Checker {
                 if (op.getType() == OpType.read) {
                     if (!intKeys.containsKey(k)) {
                         // check EXT
-                        ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns = keyWritten.get(k);
-                        for (int j = writeToKeyTxns.size() - 1; j >= 0; j--) {
-                            Transaction<KeyType, ValueType> previousTxn = writeToKeyTxns.get(j);
-                            if (previousTxn.getCommitTimestamp().compareTo(currentTxn.getStartTimestamp()) <= 0) {
-                                if (!Objects.equals(previousTxn.getExtWriteKeys().get(k), v)) {
-                                    // violate EXT
-                                    EXT<KeyType, ValueType> extViolation = new EXT<>(previousTxn.getTransactionId(),
-                                            currentTxn, k, previousTxn.getExtWriteKeys().get(k), v);
-                                    violations.add(extViolation);
-                                    for (int jj = writeToKeyTxns.size() - 1; jj >= 0; jj--) {
-                                        if (jj == j) {
-                                            continue;
-                                        }
-                                        Transaction<KeyType, ValueType> writeTxn = writeToKeyTxns.get(jj);
-                                        if (Objects.equals(writeTxn.getExtWriteKeys().get(k), v)) {
-                                            extViolation.setWriteLatterValueTxn(writeTxn);
-                                            if (jj > j) {
-                                                extViolation.setExtType(EXT.EXTType.UNCOMMITTED);
-                                            } else {
-                                                extViolation.setExtType(EXT.EXTType.BEFORE);
-                                            }
-                                            break;
-                                        }
-                                        if (jj == 0) {
-                                            incompleteExts.put(new Operation<>(OpType.write, k, v), extViolation);
-                                        }
+                        if (!Objects.equals(frontierTidVal.get(k).getRight(), v)) {
+                            // violate EXT
+                            EXT<KeyType, ValueType> extViolation = new EXT<>(frontierTidVal.get(k).getLeft(),
+                                    currentTxn, k, frontierTidVal.get(k).getRight(), v);
+                            violations.add(extViolation);
+                            if (Objects.equals(history.getInitialTxn().getExtWriteKeys().get(k), v)) {
+                                extViolation.setWriteLatterValueTxn(history.getInitialTxn());
+                                extViolation.setExtType(EXT.EXTType.BEFORE);
+                            }
+                            if (extViolation.getExtType() == EXT.EXTType.NEVER) {
+                                for (int j = i - 1; j >= 1; j--) {
+                                    Transaction<KeyType, ValueType> writeTxn = history.getTransactions().get(j);
+                                    if (Objects.equals(writeTxn.getExtWriteKeys().get(k), v)) {
+                                        extViolation.setWriteLatterValueTxn(writeTxn);
+                                        extViolation.setExtType(EXT.EXTType.BEFORE);
+                                        break;
                                     }
                                 }
-                                break;
+                            }
+                            if (extViolation.getExtType() == EXT.EXTType.NEVER) {
+                                incompleteExts.put(new Operation<>(OpType.write, k, v), extViolation);
                             }
                         }
                     } else if (!Objects.equals(intKeys.get(k), v)) {
@@ -79,27 +81,34 @@ public class FastChecker implements Checker {
                         extViolation.setExtType(EXT.EXTType.AFTER);
                         incompleteExts.remove(op, extViolation);
                     }
-                    if (!extWriteKeys.containsKey(k)) {
-                        // check NOCONFLICT
-                        ArrayList<Transaction<KeyType, ValueType>> writeToKeyTxns = keyWritten.get(k);
-                        for (int j = writeToKeyTxns.size() - 1; j >= 0; j--) {
-                            Transaction<KeyType, ValueType> previousTxn = writeToKeyTxns.get(j);
-                            if (previousTxn.getCommitTimestamp().compareTo(currentTxn.getStartTimestamp()) > 0) {
-                                // violate NOCONFLICT
-                                violations.add(new NOCONFLICT<>(previousTxn, currentTxn, k));
-                            } else {
-                                break;
-                            }
-                        }
-                    }
                     extWriteKeys.put(k, v);
-                    keyWritten.get(k).add(currentTxn);
+                    frontierTidVal.put(k, Pair.of(currentTxn.getTransactionId(), v));
                 }
                 intKeys.put(k, v);
             }
             currentTxn.setExtWriteKeys(extWriteKeys);
+            // perform optional gc
+            checkedTxnCount++;
+            if ("gc".equals(Arg.MODE) && checkedTxnCount == Arg.NUM_PER_GC) {
+                long gcStart = System.currentTimeMillis();
+                i = gc(history, i);
+                System.gc();
+                Stats.addGcTime(gcStart, System.currentTimeMillis());
+                checkedTxnCount = 0;
+            }
         }
         return violations;
+    }
+
+    public <KeyType, ValueType> int gc(History<KeyType, ValueType> history, int currentIndex) {
+        HashSet<Transaction<KeyType, ValueType>> toRemove = new HashSet<>(currentIndex * 4 / 3 + 1);
+        ArrayList<Transaction<KeyType, ValueType>> txns = history.getTransactions();
+        for (int i = 1; i < currentIndex; i++) {
+            toRemove.add(txns.get(i));
+        }
+        Transaction<KeyType, ValueType> currentTxn = txns.get(currentIndex);
+        txns.removeAll(toRemove);
+        return txns.indexOf(currentTxn);
     }
 
     @Override

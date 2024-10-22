@@ -1,5 +1,6 @@
-package checker;
+package checker.si;
 
+import checker.Checker;
 import info.*;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.serializer.SerializerFeature;
@@ -20,7 +21,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
-public class GcChecker implements Checker {
+public class SIGcChecker implements Checker {
     @Override
     public <KeyType, ValueType> ArrayList<Violation> check(History<KeyType, ValueType> history) {
         ArrayList<Violation> violations = new ArrayList<>();

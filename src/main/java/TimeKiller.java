@@ -1,4 +1,6 @@
 import checker.OnlineChecker;
+import checker.ser.SERFastGcChecker;
+import checker.si.SIOnlineChecker;
 import checker.online.GcTask;
 import checker.online.HttpRequest;
 import com.alibaba.fastjson.JSONArray;
@@ -6,12 +8,14 @@ import com.alibaba.fastjson.JSONObject;
 import com.sun.net.httpserver.HttpServer;
 import info.*;
 import checker.Checker;
-import checker.FastChecker;
-import checker.GcChecker;
+import checker.si.SIFastChecker;
+import checker.si.SIGcChecker;
 import history.History;
 import org.apache.commons.io.FileUtils;
-import reader.*;
 import reader.Reader;
+import reader.ser.SERKVFastGcReader;
+import reader.ser.SERListFastGcReader;
+import reader.si.*;
 import violation.Violation;
 import org.apache.commons.cli.*;
 import org.apache.commons.lang3.tuple.Pair;
@@ -48,7 +52,7 @@ public class TimeKiller {
         Stats.CHECKING_START = System.currentTimeMillis();
         ArrayList<Violation> violations = checker.check(history);
         Stats.CHECKING_END = System.currentTimeMillis();
-        printSiViolations(violations);
+        printViolations(violations);
 
         violations.addAll(sessionViolations);
         postCheck(history, violations);
@@ -69,6 +73,8 @@ public class TimeKiller {
                 .desc("the initial value of keys before all writes [default: null]").build());
         options.addOption(Option.builder().longOpt("mode").hasArg(true).type(String.class)
                 .desc("choose a mode to run TimeKiller [default: fast] [possible values: fast, gc, online]").build());
+        options.addOption(Option.builder().longOpt("consistency_model").hasArg(true).type(String.class)
+                .desc("consistency model to check [default: SI] [possible values: SI, SER]").build());
         options.addOption(Option.builder().longOpt("data_model").hasArg(true).type(String.class)
                 .desc("the data model of transaction operations [default: kv] [possible values: kv, list]").build());
         options.addOption(Option.builder().longOpt("fix").desc("fix violations if found").build());
@@ -109,6 +115,11 @@ public class TimeKiller {
             Arg.INITIAL_VALUE = commandLine.getOptionValue("initial_value", null);
             if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
                 Arg.INITIAL_VALUE_LONG = Long.parseLong(Arg.INITIAL_VALUE);
+            }
+            Arg.CONSISTENCY_MODEL = commandLine.getOptionValue("consistency_model", "SI");
+            if (!"SI".equals(Arg.CONSISTENCY_MODEL) && !"SER".equals(Arg.CONSISTENCY_MODEL)) {
+                System.out.println("Arg for --consistency_model is invalid");
+                printAndExit(options);
             }
             Arg.DATA_MODEL = commandLine.getOptionValue("data_model", "kv");
             if (!"kv".equals(Arg.DATA_MODEL) && !"list".equals(Arg.DATA_MODEL)) {
@@ -172,48 +183,70 @@ public class TimeKiller {
         }
     }
 
-    private static void printSiViolations(ArrayList<Violation> violations) {
+    private static void printViolations(ArrayList<Violation> violations) {
         if (!violations.isEmpty()) {
-            System.out.println("Do NOT satisfy SI");
+            System.out.println("Do NOT satisfy " + Arg.CONSISTENCY_MODEL);
             violations.forEach(System.out::println);
             if (violations.size() == 1) {
-                System.out.println("Total 1 violation of SI is found");
+                System.out.println("Total 1 violation of " + Arg.CONSISTENCY_MODEL + " is found");
             } else {
-                System.out.println("Total " + violations.size() + " violations of SI are found");
+                System.out.println("Total " + violations.size() + " violations of " + Arg.CONSISTENCY_MODEL + " are found");
             }
         } else {
-            System.out.println("Satisfy SI");
+            System.out.println("Satisfy " + Arg.CONSISTENCY_MODEL);
         }
     }
 
     private static void decideReaderAndChecker() {
-        if ("online".equals(Arg.MODE)) {
-            reader = new OnlineReader();
-            checker = new OnlineChecker();
-            return;
-        }
-        File file = new File(Arg.FILEPATH);
-        if (!file.exists() || file.isDirectory()) {
-            System.err.println("Invalid history path");
-            System.exit(1);
-        } else if (!Arg.FILEPATH.endsWith(".json")) {
-            System.err.println("Invalid history file suffix");
-            System.exit(1);
+        if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
+            if ("online".equals(Arg.MODE)) {
+                reader = new SIOnlineReader();
+                checker = new SIOnlineChecker();
+                return;
+            }
+            File file = new File(Arg.FILEPATH);
+            if (!file.exists() || file.isDirectory()) {
+                System.err.println("Invalid history path");
+                System.exit(1);
+            } else if (!Arg.FILEPATH.endsWith(".json")) {
+                System.err.println("Invalid history file suffix");
+                System.exit(1);
+            } else {
+                if ("fast".equals(Arg.MODE)) {
+                    if ("kv".equals(Arg.DATA_MODEL)) {
+                        reader = new SIKVFastReader();
+                    } else if ("list".equals(Arg.DATA_MODEL)) {
+                        reader = new SIListFastReader();
+                    }
+                    checker = new SIFastChecker();
+                } else if ("gc".equals(Arg.MODE)) {
+                    if ("kv".equals(Arg.DATA_MODEL)) {
+                        reader = new SIKVGcReader();
+                    } else if ("list".equals(Arg.DATA_MODEL)) {
+                        reader = new SIListGcReader();
+                    }
+                    checker = new SIGcChecker();
+                }
+            }
         } else {
-            if ("fast".equals(Arg.MODE)) {
+            if ("online".equals(Arg.MODE)) {
+                // TODO SER online reader and checker
+                return;
+            }
+            File file = new File(Arg.FILEPATH);
+            if (!file.exists() || file.isDirectory()) {
+                System.err.println("Invalid history path");
+                System.exit(1);
+            } else if (!Arg.FILEPATH.endsWith(".json")) {
+                System.err.println("Invalid history file suffix");
+                System.exit(1);
+            } else {
                 if ("kv".equals(Arg.DATA_MODEL)) {
-                    reader = new KVFastReader();
+                    reader = new SERKVFastGcReader();
                 } else if ("list".equals(Arg.DATA_MODEL)) {
-                    reader = new ListFastReader();
+                    reader = new SERListFastGcReader();
                 }
-                checker = new FastChecker();
-            } else if ("gc".equals(Arg.MODE)) {
-                if ("kv".equals(Arg.DATA_MODEL)) {
-                    reader = new KVGcReader();
-                } else if ("list".equals(Arg.DATA_MODEL)) {
-                    reader = new ListGcReader();
-                }
-                checker = new GcChecker();
+                checker = new SERFastGcChecker();
             }
         }
     }
@@ -233,13 +266,13 @@ public class TimeKiller {
         System.out.println("After fixing for the first time...");
         history.reset();
         violations = checker.check(history);
-        printSiViolations(violations);
+        printViolations(violations);
         if (!violations.isEmpty()) {
             violations.forEach(Violation::fix);
             System.out.println("After fixing for the second time...");
             history.reset();
             violations = checker.check(history);
-            printSiViolations(violations);
+            printViolations(violations);
             if (!violations.isEmpty()) {
                 System.out.println("Fixing failed unexpectedly");
                 return;
@@ -306,6 +339,7 @@ public class TimeKiller {
                 JSONArray jsonArray = JSONArray.parseArray(request.getContent());
                 for (int i = 0; i < jsonArray.size(); i++) {
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
+                    // TODO gc settings for SER
                     if (history.getTransactionEntries().size() >= Arg.TXN_START_GC * 2
                             && System.currentTimeMillis() >= nextGcTime
                             || history.getTransactionEntries().size() >= Arg.MAX_TXN_IN_MEM * 2) {

@@ -1,4 +1,4 @@
-package reader;
+package reader.si;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -8,17 +8,19 @@ import history.transaction.HybridLogicalClock;
 import history.transaction.OpType;
 import history.transaction.Operation;
 import history.transaction.Transaction;
+import info.Arg;
+import info.Stats;
+import org.apache.commons.lang3.tuple.Pair;
+import reader.Reader;
 import violation.SESSION;
 import violation.Violation;
-import info.*;
-import org.apache.commons.lang3.tuple.Pair;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class KVFastReader implements Reader<Long, Long> {
+public class SIListFastReader implements Reader<Long, Long> {
     private Transaction<Long, Long> initialTxn;
     private HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten;
 
@@ -56,12 +58,19 @@ public class KVFastReader implements Reader<Long, Long> {
                     String type = jsonOperation.getString("t");
                     Long key = jsonOperation.getLong("k");
                     maxKey = Math.max(maxKey, key);
-                    Long value = jsonOperation.getLong("v");
-                    if ("w".equalsIgnoreCase(type) || "write".equalsIgnoreCase(type)) {
+                    if ("a".equalsIgnoreCase(type) || "append".equalsIgnoreCase(type)) {
+                        Long value = jsonOperation.getLong("v");
                         Operation<Long, Long> op = new Operation<>(OpType.write, key, value);
                         ops.add(op);
                         writeOpCount++;
                     } else if ("r".equalsIgnoreCase(type) || "read".equalsIgnoreCase(type)) {
+                        JSONArray jsonValues = jsonOperation.getJSONArray("v");
+                        Long value;
+                        if (jsonValues == null || jsonValues.isEmpty()) {
+                            value = Arg.INITIAL_VALUE_LONG;
+                        } else {
+                            value = jsonValues.getLong(jsonValues.size() - 1);
+                        }
                         Operation<Long, Long> op = new Operation<>(OpType.read, key, value);
                         ops.add(op);
                         readOpCount++;

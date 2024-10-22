@@ -1,4 +1,4 @@
-package reader;
+package reader.ser;
 
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
@@ -11,6 +11,7 @@ import history.transaction.Transaction;
 import info.Arg;
 import info.Stats;
 import org.apache.commons.lang3.tuple.Pair;
+import reader.Reader;
 import violation.SESSION;
 import violation.Violation;
 
@@ -19,9 +20,9 @@ import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 
-public class ListFastReader implements Reader<Long, Long> {
+public class SERKVFastGcReader implements Reader<Long, Long> {
     private Transaction<Long, Long> initialTxn;
-    private HashMap<Long, ArrayList<Transaction<Long, Long>>> keyWritten;
+    private HashMap<Long, Pair<String, Long>> frontierTidVal;
 
     @Override
     public Pair<History<Long, Long>, ArrayList<Violation>> read(Object filepath) {
@@ -57,19 +58,12 @@ public class ListFastReader implements Reader<Long, Long> {
                     String type = jsonOperation.getString("t");
                     Long key = jsonOperation.getLong("k");
                     maxKey = Math.max(maxKey, key);
-                    if ("a".equalsIgnoreCase(type) || "append".equalsIgnoreCase(type)) {
-                        Long value = jsonOperation.getLong("v");
+                    Long value = jsonOperation.getLong("v");
+                    if ("w".equalsIgnoreCase(type) || "write".equalsIgnoreCase(type)) {
                         Operation<Long, Long> op = new Operation<>(OpType.write, key, value);
                         ops.add(op);
                         writeOpCount++;
                     } else if ("r".equalsIgnoreCase(type) || "read".equalsIgnoreCase(type)) {
-                        JSONArray jsonValues = jsonOperation.getJSONArray("v");
-                        Long value;
-                        if (jsonValues == null || jsonValues.isEmpty()) {
-                            value = Arg.INITIAL_VALUE_LONG;
-                        } else {
-                            value = jsonValues.getLong(jsonValues.size() - 1);
-                        }
                         Operation<Long, Long> op = new Operation<>(OpType.read, key, value);
                         ops.add(op);
                         readOpCount++;
@@ -105,12 +99,12 @@ public class ListFastReader implements Reader<Long, Long> {
         System.out.printf("|  Write op percentage:     %-10f    |\n", (double) writeOpCount / opCount);
         System.out.println("===========================================");
 
-        return Pair.of(new History<>(txns, keyWritten.size(), null,
-                keyWritten, null), violations);
+        return Pair.of(new History<>(txns, initialTxn.getExtWriteKeys().size(), null,
+                null, frontierTidVal), violations);
     }
 
     private void createInitialTxn(long maxKey) {
-        keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+        frontierTidVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
         HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
@@ -122,9 +116,7 @@ public class ListFastReader implements Reader<Long, Long> {
         for (long key = 0; key <= maxKey; key++) {
             operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
             extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
-            ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
-            writeToKeyTxns.add(initialTxn);
-            keyWritten.put(key, writeToKeyTxns);
+            frontierTidVal.put(key, Pair.of("initial", Arg.INITIAL_VALUE_LONG));
         }
     }
 }
