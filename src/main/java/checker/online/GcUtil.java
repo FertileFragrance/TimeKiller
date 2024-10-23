@@ -57,4 +57,19 @@ public class GcUtil {
         }
         return null;
     }
+
+    public static <KeyType, ValueType> Transaction<KeyType, ValueType> readTxn(String tid) {
+        String filepath = tidEntryToFile.get(tid);
+        try (Input input = new Input(new GZIPInputStream(Files.newInputStream(Paths.get(filepath))))) {
+            HashSet<Transaction<KeyType, ValueType>> txns = checkKryo.readObject(input, HashSet.class);
+            for (Transaction<KeyType, ValueType> txn : txns) {
+                if (txn.getTransactionId().equals(tid)) {
+                    return txn;
+                }
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return null;
+    }
 }

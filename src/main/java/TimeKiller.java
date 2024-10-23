@@ -1,5 +1,6 @@
 import checker.OnlineChecker;
 import checker.ser.SERFastGcChecker;
+import checker.ser.SEROnlineChecker;
 import checker.si.SIOnlineChecker;
 import checker.online.GcTask;
 import checker.online.HttpRequest;
@@ -15,6 +16,7 @@ import org.apache.commons.io.FileUtils;
 import reader.Reader;
 import reader.ser.SERKVFastGcReader;
 import reader.ser.SERListFastGcReader;
+import reader.ser.SEROnlineReader;
 import reader.si.*;
 import violation.Violation;
 import org.apache.commons.cli.*;
@@ -230,7 +232,8 @@ public class TimeKiller {
             }
         } else {
             if ("online".equals(Arg.MODE)) {
-                // TODO SER online reader and checker
+                reader = new SEROnlineReader();
+                checker = new SEROnlineChecker();
                 return;
             }
             File file = new File(Arg.FILEPATH);
@@ -339,11 +342,7 @@ public class TimeKiller {
                 JSONArray jsonArray = JSONArray.parseArray(request.getContent());
                 for (int i = 0; i < jsonArray.size(); i++) {
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
-                    // TODO gc settings for SER
-                    if (history.getTransactionEntries().size() >= Arg.TXN_START_GC * 2
-                            && System.currentTimeMillis() >= nextGcTime
-                            || history.getTransactionEntries().size() >= Arg.MAX_TXN_IN_MEM * 2) {
-                        GcTask.doGc = true;
+                    if (System.currentTimeMillis() >= nextGcTime && GcTask.judgeDoGc(history)) {
                         Thread.sleep(100);
                         nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
                     }

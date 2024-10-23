@@ -22,16 +22,41 @@ public class GcTask implements Runnable {
         GcUtil.init();
     }
 
+    public static boolean judgeDoGc(History<?, ?> history) {
+        if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
+            if (history.getTransactionEntries().size() >= Arg.TXN_START_GC * 2
+                    || history.getTransactionEntries().size() >= Arg.MAX_TXN_IN_MEM * 2) {
+                doGc = true;
+                return true;
+            } else {
+                return false;
+            }
+        } else {
+            if (history.getTransactions().size() >= Arg.TXN_START_GC
+                    || history.getTransactions().size() >= Arg.MAX_TXN_IN_MEM) {
+                doGc = true;
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
     @Override
     public void run() {
         while (true) {
-            if (doGc || history.getTransactionEntries().size() >= Arg.TXN_START_GC * 2
-                    && System.currentTimeMillis() >= nextGcTime) {
+            int size;
+            if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
+                size = history.getTransactionEntries().size() / 2;
+            } else {
+                size = history.getTransactions().size();
+            }
+            if (doGc || size >= Arg.TXN_START_GC && System.currentTimeMillis() >= nextGcTime) {
                 doGc = false;
                 gcLock.lock();
-                int size = onlineChecker.gc(history);
+                int removedSize = onlineChecker.gc(history);
                 gcLock.unlock();
-                if (size > 0) {
+                if (removedSize > 0) {
                     System.gc();
                 }
                 nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
