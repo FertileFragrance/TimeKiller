@@ -1,6 +1,7 @@
 package checker.ser;
 
 import checker.OnlineChecker;
+import checker.online.GcTask;
 import checker.online.GcUtil;
 import checker.online.MarkTimeoutTask;
 import com.esotericsoftware.kryo.Kryo;
@@ -171,5 +172,62 @@ public class SEROnlineChecker implements OnlineChecker {
             txns.removeAll(toRemove);
         }
         return toRemove.size();
+    }
+
+    private final HashSet<Transaction<?, ?>> remove = new HashSet<>(6667);
+    private String savePath = null;
+    private final HashMap<Integer, String> idx2Tid = new HashMap<>(16000);
+
+    @Override
+    public <KeyType, ValueType> void preGc(History<KeyType, ValueType> history) {
+        ArrayList<Transaction<KeyType, ValueType>> txns = history.getTransactions();
+        ArrayList<Pair<String, Boolean>> tidEntryWhetherGc = history.getTidEntryWhetherGc();
+        int inMemoryIndex = 1;
+        savePath = cacheDir + System.currentTimeMillis();
+        for (int i = 1; i < tidEntryWhetherGc.size(); i++) {
+            if (tidEntryWhetherGc.get(i).getRight()) {
+                continue;
+            }
+            Transaction<KeyType, ValueType> txn = txns.get(inMemoryIndex);
+            if (System.currentTimeMillis() - txn.getRealtimeTimestamp() > Arg.DURATION_IN_MEMORY && txn.isTimeout()) {
+                remove.add(txn);
+                idx2Tid.put(i, txn.getTransactionId());
+                GcTask.maxTimestampInRemove = txn.getCommitTimestamp();
+            }
+            inMemoryIndex++;
+            if (remove.size() >= 16000) {
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void performGc() {
+        if (!remove.isEmpty()) {
+            try (Output output = new Output(new GZIPOutputStream(Files.newOutputStream(Paths.get(savePath))))) {
+                serializeKryo.writeObject(output, remove);
+                output.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Override
+    public <KeyType, ValueType> int postGc(History<KeyType, ValueType> history) {
+        int removedSize = remove.size();
+        ArrayList<Pair<String, Boolean>> tidEntryWhetherGc = history.getTidEntryWhetherGc();
+        for (Map.Entry<Integer, String> entry : idx2Tid.entrySet()) {
+            int i = entry.getKey();
+            String tid = entry.getValue();
+            GcUtil.tidEntryToFile.put(tid, savePath);
+            tidEntryWhetherGc.set(i, Pair.of(tid, true));
+        }
+        history.getTransactions().removeAll(remove);
+        remove.clear();
+        savePath = null;
+        idx2Tid.clear();
+        GcTask.maxTimestampInRemove = history.getInitialTxn().getStartTimestamp();
+        return removedSize;
     }
 }

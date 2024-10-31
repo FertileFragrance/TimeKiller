@@ -2,13 +2,14 @@ package checker.online;
 
 import checker.OnlineChecker;
 import history.History;
+import history.transaction.HybridLogicalClock;
 import info.Arg;
 
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class GcTask implements Runnable {
-    public static Lock gcLock = new ReentrantLock();
+    public static Lock gcLock = new ReentrantLock(true);
     public static volatile boolean doGc = false;
     public static volatile long nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
 
@@ -21,6 +22,8 @@ public class GcTask implements Runnable {
 
         GcUtil.init();
     }
+
+    public static volatile HybridLogicalClock maxTimestampInRemove = new HybridLogicalClock(0L, 0L);
 
     public static boolean judgeDoGc(History<?, ?> history) {
         if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
@@ -42,6 +45,28 @@ public class GcTask implements Runnable {
         }
     }
 
+//    @Override
+    public void run1() {
+        while (true) {
+            int size;
+            if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
+                size = history.getTransactionEntries().size() / 2;
+            } else {
+                size = history.getTransactions().size();
+            }
+            if (doGc || size >= Arg.TXN_START_GC && System.currentTimeMillis() >= nextGcTime) {
+                doGc = false;
+                gcLock.lock();
+                int removedSize = onlineChecker.gc(history);
+                gcLock.unlock();
+                if (removedSize > 0) {
+                    System.gc();
+                }
+                nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
+            }
+        }
+    }
+
     @Override
     public void run() {
         while (true) {
@@ -54,7 +79,11 @@ public class GcTask implements Runnable {
             if (doGc || size >= Arg.TXN_START_GC && System.currentTimeMillis() >= nextGcTime) {
                 doGc = false;
                 gcLock.lock();
-                int removedSize = onlineChecker.gc(history);
+                onlineChecker.preGc(history);
+                gcLock.unlock();
+                onlineChecker.performGc();
+                gcLock.lock();
+                int removedSize = onlineChecker.postGc(history);
                 gcLock.unlock();
                 if (removedSize > 0) {
                     System.gc();

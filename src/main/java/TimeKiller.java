@@ -7,6 +7,7 @@ import checker.online.HttpRequest;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.sun.net.httpserver.HttpServer;
+import history.transaction.HybridLogicalClock;
 import info.*;
 import checker.Checker;
 import checker.si.SIFastChecker;
@@ -346,7 +347,14 @@ public class TimeKiller {
                         Thread.sleep(100);
                         nextGcTime = System.currentTimeMillis() + Arg.GC_INTERVAL;
                     }
+                    JSONObject jsonStartTs = jsonObject.getJSONObject("sts");
+                    HybridLogicalClock startTs = new HybridLogicalClock(jsonStartTs.getLong("p"), jsonStartTs.getLong("l"));
                     GcTask.gcLock.lock();
+                    if (startTs.compareTo(GcTask.maxTimestampInRemove) < 0) {
+                        i--;
+                        GcTask.gcLock.unlock();
+                        continue;
+                    }
                     try {
                         Pair<? extends History<?, ?>, ArrayList<Violation>> historyAndViolations = reader.read(jsonObject);
                         ArrayList<Violation> violations = historyAndViolations.getRight();

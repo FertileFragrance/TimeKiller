@@ -1,6 +1,7 @@
 package checker.si;
 
 import checker.OnlineChecker;
+import checker.online.GcTask;
 import checker.online.MarkTimeoutTask;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Output;
@@ -219,5 +220,69 @@ public class SIOnlineChecker implements OnlineChecker {
 //            System.out.println(toRemove.size() / 2 + " txns are removed. " + txnEntries.size() / 2 + " txns are left");
         }
         return toRemove.size();
+    }
+
+    private final HashSet<TransactionEntry<?, ?>> remove = new HashSet<>(6667);
+    private String savePath = null;
+    private final HashMap<Integer, String> idx2TidEntry = new HashMap<>(16000);
+
+    @Override
+    public <KeyType, ValueType> void preGc(History<KeyType, ValueType> history) {
+        ArrayList<TransactionEntry<KeyType, ValueType>> txnEntries = history.getTransactionEntries();
+        ArrayList<Pair<String, Boolean>> tidEntryWhetherGc = history.getTidEntryWhetherGc();
+        int inMemoryIndex = 2;
+        savePath = cacheDir + System.currentTimeMillis();
+        for (int i = 2; i < tidEntryWhetherGc.size(); i++) {
+            if (tidEntryWhetherGc.get(i).getRight()) {
+                continue;
+            }
+            TransactionEntry<KeyType, ValueType> entry = txnEntries.get(inMemoryIndex);
+            if (System.currentTimeMillis() - entry.getTransaction().getRealtimeTimestamp() > Arg.DURATION_IN_MEMORY
+                    && entry.getTransaction().isTimeout()) {
+                String tidEntry = entry.getTransaction().getTransactionId();
+                if (entry.getEntryType() == TransactionEntry.EntryType.START) {
+                    tidEntry += "-s";
+                } else {
+                    tidEntry += "-c";
+                }
+                remove.add(entry);
+                idx2TidEntry.put(i, tidEntry);
+                GcTask.maxTimestampInRemove = entry.getTimestamp();
+            }
+            inMemoryIndex++;
+            if (remove.size() >= 16000) {
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void performGc() {
+        if (!remove.isEmpty()) {
+            try (Output output = new Output(new GZIPOutputStream(Files.newOutputStream(Paths.get(savePath))))) {
+                serializeKryo.writeObject(output, remove);
+                output.flush();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    @Override
+    public <KeyType, ValueType> int postGc(History<KeyType, ValueType> history) {
+        int removedSize = remove.size();
+        ArrayList<Pair<String, Boolean>> tidEntryWhetherGc = history.getTidEntryWhetherGc();
+        for (Map.Entry<Integer, String> entry : idx2TidEntry.entrySet()) {
+            int i = entry.getKey();
+            String tidEntry = entry.getValue();
+            GcUtil.tidEntryToFile.put(tidEntry, savePath);
+            tidEntryWhetherGc.set(i, Pair.of(tidEntry, true));
+        }
+        history.getTransactionEntries().removeAll(remove);
+        remove.clear();
+        savePath = null;
+        idx2TidEntry.clear();
+        GcTask.maxTimestampInRemove = history.getInitialTxn().getStartTimestamp();
+        return removedSize;
     }
 }
