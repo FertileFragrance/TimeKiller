@@ -33,11 +33,11 @@ public class SERFastGcChecker implements Checker {
         int checkedTxnCount = 0;
         for (int i = 1; i < history.getTransactions().size(); i++) {
             Transaction<KeyType, ValueType> currentTxn = history.getTransactions().get(i);
-            // check TRANSVIS
-            Transaction<KeyType, ValueType> lastCommittedTxn = history.getTransactions().get(i - 1);
-            if (currentTxn.getStartTimestamp().compareTo(lastCommittedTxn.getCommitTimestamp()) < 0) {
-                violations.add(new TRANSVIS<>(lastCommittedTxn, currentTxn));
-            }
+//            // check TRANSVIS
+//            Transaction<KeyType, ValueType> lastCommittedTxn = history.getTransactions().get(i - 1);
+//            if (currentTxn.getStartTimestamp().compareTo(lastCommittedTxn.getCommitTimestamp()) < 0) {
+//                violations.add(new TRANSVIS<>(lastCommittedTxn, currentTxn));
+//            }
             int opSize = currentTxn.getOperations().size();
             HashMap<KeyType, ValueType> intKeys = new HashMap<>(opSize * 4 / 3 + 1);
             HashMap<KeyType, ValueType> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);

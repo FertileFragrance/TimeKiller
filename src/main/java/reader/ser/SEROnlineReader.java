@@ -93,10 +93,10 @@ public class SEROnlineReader implements Reader<Long, Long> {
                 txns.add(j + 1, txn);
                 history.setCommitEntryIndex(j + 1);
                 history.setCommitEntryIndexInMemory(inMemoryIndex + 1);
-                // check TRANSVIS
-                if (startTs.compareTo(existingTxn.getCommitTimestamp()) < 0) {
-                    violations.add(new TRANSVIS<>(existingTxn, txn));
-                }
+//                // check TRANSVIS
+//                if (startTs.compareTo(existingTxn.getCommitTimestamp()) < 0) {
+//                    violations.add(new TRANSVIS<>(existingTxn, txn));
+//                }
                 break;
             }
             if (!tidEntryWhetherGc.get(j).getRight()) {
