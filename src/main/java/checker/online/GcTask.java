@@ -25,6 +25,14 @@ public class GcTask implements Runnable {
 
     public static volatile HybridLogicalClock maxTimestampInRemove = new HybridLogicalClock(0L, 0L);
 
+    public static boolean judgeFull(History<?, ?> history) {
+        if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
+            return history.getTransactionEntries().size() >= Arg.MAX_TXN_IN_MEM * 2;
+        } else {
+            return history.getTransactions().size() >= Arg.MAX_TXN_IN_MEM;
+        }
+    }
+
     public static boolean judgeDoGc(History<?, ?> history) {
         if ("SI".equals(Arg.CONSISTENCY_MODEL)) {
             if (history.getTransactionEntries().size() >= Arg.TXN_START_GC * 2
@@ -76,7 +84,7 @@ public class GcTask implements Runnable {
             } else {
                 size = history.getTransactions().size();
             }
-            if (doGc || size >= Arg.TXN_START_GC && System.currentTimeMillis() >= nextGcTime) {
+            if (doGc || judgeFull(history) || size >= Arg.TXN_START_GC && System.currentTimeMillis() >= nextGcTime) {
                 doGc = false;
                 gcLock.lock();
                 onlineChecker.preGc(history);

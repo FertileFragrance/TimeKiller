@@ -189,7 +189,7 @@ public class SEROnlineChecker implements OnlineChecker {
                 continue;
             }
             Transaction<KeyType, ValueType> txn = txns.get(inMemoryIndex);
-            if (System.currentTimeMillis() - txn.getRealtimeTimestamp() > Arg.DURATION_IN_MEMORY && txn.isTimeout()) {
+            if (System.currentTimeMillis() - txn.getRealtimeTimestamp() /*/ 1000*/ > Arg.DURATION_IN_MEMORY && txn.isTimeout()) {
                 remove.add(txn);
                 idx2Tid.put(i, txn.getTransactionId());
                 GcTask.maxTimestampInRemove = txn.getCommitTimestamp();

@@ -342,6 +342,7 @@ public class TimeKiller {
                 }
                 JSONArray jsonArray = JSONArray.parseArray(request.getContent());
                 for (int i = 0; i < jsonArray.size(); i++) {
+                    while (GcTask.judgeFull(history)) {}
                     JSONObject jsonObject = jsonArray.getJSONObject(i);
                     if (System.currentTimeMillis() >= nextGcTime && GcTask.judgeDoGc(history)) {
                         Thread.sleep(100);

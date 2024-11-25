@@ -90,7 +90,7 @@ public class SEROnlineReader implements Reader<Long, Long> {
             assert existingTxn != null;
             if (commitTs.compareTo(existingTxn.getCommitTimestamp()) >= 0) {
                 tidEntryWhetherGc.add(j + 1, Pair.of(txnId, false));
-                txns.add(j + 1, txn);
+                txns.add(inMemoryIndex + 1, txn);
                 history.setCommitEntryIndex(j + 1);
                 history.setCommitEntryIndexInMemory(inMemoryIndex + 1);
 //                // check TRANSVIS
