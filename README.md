@@ -406,7 +406,7 @@ Step 3: Implement a runner based on [Jepsen](https://github.com/jepsen-io/jepsen
 
 Step 4: Write a collector to receive requests of committed transactions from the runner. Every time it gets 500 transactions, collector sends them to Aion in a batch.
 
-We provide a collector `collect-dgraph.py` as an example which also supports injecting normally distributed delays used in Figure 12 and 13.
+We provide a collector `collect-dgraph.py` as an example which also supports injecting normally distributed delays used in Figure 13 and 14.
 
 ```sh
 python collect-dgraph.py <total_txn_num>
