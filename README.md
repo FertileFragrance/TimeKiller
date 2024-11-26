@@ -1,8 +1,6 @@
 # TimeKiller (Chronos and Aion)
 a fast white-box snapshot isolation (SI) checker based on timestamps
 
-a [technical report](./technical-report-for-paper-454.pdf) is available to help you have a more comprehensive understanding
-
 ## Requirements
 
 * JDK 11 (or above)
@@ -68,9 +66,10 @@ java -jar TimeKiller.jar --help
 The whole instructions for use are as follows.
 
 ```text
-usage: TimeKiller [--data_model <arg>] [--duration_in_memory <arg>] [--enable_session <arg>] [--fix] [--gc_interval <arg>] [-h] [--history_path <arg>]
-       [--initial_value <arg>] [--log_ext_flip] [--max_txn_in_mem <arg>] [--mode <arg>] [--num_per_gc <arg>] [--port <arg>] [--timeout_delay <arg>]
-       [--txn_start_gc <arg>] [--use_cts_as_rtts <arg>]
+usage: TimeKiller [--consistency_model <arg>] [--data_model <arg>] [--duration_in_memory <arg>] [--enable_session <arg>] [--fix] [--gc_interval <arg>] [-h]
+       [--history_path <arg>] [--initial_value <arg>] [--log_ext_flip] [--max_txn_in_mem <arg>] [--mode <arg>] [--num_per_gc <arg>] [--port <arg>]
+       [--timeout_delay <arg>] [--txn_start_gc <arg>] [--use_cts_as_rtts <arg>]
+    --consistency_model <arg>    consistency model to check [default: SI] [possible values: SI, SER]
     --data_model <arg>           the data model of transaction operations [default: kv] [possible values: kv, list]
     --duration_in_memory <arg>   the duration transaction kept in memory in realtime in millisecond under online mode [default: 10000]
     --enable_session <arg>       whether to check the SESSION axiom using timestamps [default: true]
@@ -98,7 +97,7 @@ Set `--mode` to `fast` or `gc` to run Chronos, performing a one-shot offline che
 Under `fast` or `gc` mode:
 
 * `--history_path` is a **required** option to set the path of json-format history. The file must have `.json` extension.
-* `--enable_session, --initial_value, --data_model, --fix` are valid options.
+* `--consistency_model, --enable_session, --initial_value, --data_model, --fix` are valid options.
 
 Under `fast` mode:
 
@@ -163,7 +162,7 @@ Set `--mode` to `online` to run Aion, performing a continuous online checking by
 
 Under `online` mode:
 
-* `--enable_session, --initial_value` are valid options just like Chronos.
+* `--consistency_model, --enable_session, --initial_value` are valid options just like Chronos.
 * `--port, --timeout_delay, --log_ext_flip, --use_cts_as_rtts, --duration_in_memory, --txn_start_gc, --max_txn_in_mem, --gc_interval` are valid options **only** under `online` mode.
 * All other options will be ignored.
 
@@ -183,6 +182,7 @@ If you are confused by the numerous configuration options, don’t worry. After 
 
 **Generic** options (valid for both Chronos and Aion):
 
+* `--consistency_model`: It is the consistency model (isolation level) to check, which is SI by default. SER is also supported.
 * `--enable_session`: If set to `true` (by default), Chronos or Aion will use the `sts` and `cts` of transactions in the input history to check the SESSION axiom. Informally, SESSION indicates that a later transaction must start after the previous transactions in the same session (having the same `sid`). Otherwise, SESSION will not be checked.
 * `--initial_value`: It is the value read from a key before any operation writes on that key. In most cases, it is `null` (by default) or `0`, determined by the running database and the processing logic to get the history.
 
@@ -222,6 +222,8 @@ Note that the transactions in a history should be in session order. Otherwise th
 We use [elle-cli](https://github.com/ligurio/elle-cli) to run [Elle](https://github.com/jepsen-io/elle) on key-value and list histories. You don't need to install it yourself. We provide a packaged program `elle-cli.jar` recording its runtime by adding two timestamps when it starts and ends. You need to manually record this runtime if you install it yourself.
 
 As black-box SI checking tools, [PolySI](https://github.com/hengxin/PolySI-PVLDB2023-Artifacts/tree/main/artifact/PolySI) and [Viper](https://github.com/Khoury-srg/Viper) struggle to have comparable performance to our white-box tools. Installing and running them might be a time consuming work, so we don't provide automated scripts for running them. But we provide the data for all the tools. You can try them on a small history following the instructions on their homepages using our history data if you're interested.
+
+Since Emme is not open source up to now, we implemented a version ourselves to check SI. As it costs much time and space to construct SSG to check SI on large histories, we don't provide automated scripts to run it in some experiments.
 
 For every experiment we provide `TimeKiller.jar` (and `elle-cli.jar` if required) so you don't need to install it in advance. But you need Java 11 (or above) and Linux environment to run the scripts (some may require Python environment).
 
