@@ -225,24 +225,31 @@ As black-box SI checking tools, [PolySI](https://github.com/hengxin/PolySI-PVLDB
 
 Since Emme is not open source up to now, we implemented a version ourselves to check SI. As it costs much time and space to construct SSG to check SI on large histories, we don't provide automated scripts to run it in some experiments.
 
-For every experiment we provide `TimeKiller.jar` (and `elle-cli.jar` if required) so you don't need to install it in advance. But you need Java 11 (or above) and Linux environment to run the scripts (some may require Python environment).
+Installing and running [Cobra](https://github.com/DBCobra/CobraHome) for online checking requires a specific cuda version, so we don't provide the program. Data is also provided. Yon can try to install it yourself and run it with our data if you're interested.
 
-Data, programs and scripts can be downloaded from [Google Drive](https://drive.google.com/drive/folders/1jU-TADrRDq-SDxyHFN2Hcyk6RnXG0YEq).
+For every experiment we provide `TimeKiller.jar` (and `elle-cli.jar` as well as `emme.py` if required) so you don't need to install it in advance. But you need Java 11 (or above) and Linux environment to run the scripts (some may require Python environment).
 
-### Fig 3
+Data, programs and scripts can be downloaded from [Google Drive](https://drive.google.com/drive/folders/1JccrZqmm2L_rpJTjuuGLzXNDw_xu1Ycc).
 
-Download the `fig3.zip`, decompress it, enter `fig3/` directory, and run
+### Fig 4
+
+Running the scripts of this experiment requires `python3` (or you can modify `python3` to `python` in the scripts).
+
+Moreover, you need `json` in your Python environment.
+
+Download the `fig4.zip`, decompress it, enter `fig4/` directory, and run
 
 ```sh
 ./run-chronos.sh
 ./run-ellekv.sh
+./run-emme.sh
 ```
 
 Note that it may take some time for `elle-cli.jar` to load and exit, so your somatosensory running time may be longer than the actual running time. This applies to all the experiments that use `elle-cli.jar`.
 
-### Fig 4
+### Fig 5
 
-Download the `fig4.zip`, decompress it and enter `fig4/` directory.
+Download the `fig5.zip`, decompress it and enter `fig5/` directory.
 
 To reproduce Figure 4a, run
 
@@ -251,6 +258,8 @@ To reproduce Figure 4a, run
 ./run-ellekv.sh
 ```
 
+Please manually run `emme.py` on relatively smaller histories to see its results if you're interested.
+
 To reproduce Figure 4b, run
 
 ```sh
@@ -258,47 +267,41 @@ To reproduce Figure 4b, run
 ./run-ellelist.sh
 ```
 
-### Fig 5
-
-Download the `fig5.zip`, decompress it and enter `fig5/` directory.
-
-To reproduce subfigure a/b/c/d/e/f, run
-
-```sh
-./run-{a|b|c|d|e|f}.sh
-```
-
 ### Fig 6
 
 Download the `fig6.zip`, decompress it and enter `fig6/` directory.
 
-Running the scripts of this experiment requires `python3` (or you can modify `python3` to `python` in the scripts).
-
-To reproduce subfigure a/b/c/d/e/f, run
-
-```sh
-./run-{a|b|c|d|e|f}-chronos.sh
-./run-{a|b|c|d|e|f}-ellekv.sh
-```
-
-Note that this experiment requires there are no other running `java` processes when a script is running. It also means that the scripts cannot be running at the same time.
-
-### Fig 7
-
-Download the `fig7.zip`, decompress it and enter `fig7/` directory.
-
 To reproduce subfigure a/b/c/d/e/f, run
 
 ```sh
 ./run-{a|b|c|d|e|f}.sh
 ```
 
-### Fig 8
+### Fig 7
 
-Download the `fig8.zip`, decompress it, enter `fig8/` directory, and run
+Running the scripts of this experiment requires `python3` (or you can modify `python3` to `python` in the scripts).
+
+Download the `fig7.zip`, decompress it and enter `fig7/` directory.
+
+To reproduce subfigure a or b, run
 
 ```sh
-./run.sh
+./run-{a|b}-chronos.sh
+./run-{a|b}-ellekv.sh
+```
+
+Note that this experiment requires there are no other running `java` processes when a script is running. It also means that the scripts cannot be running at the same time.
+
+Please manually run `emme.py` on relatively smaller histories and monitor its memory usage to see its results if you're interested.
+
+### Fig 8
+
+Download the `fig8.zip`, decompress it and enter `fig8/` directory.
+
+To reproduce subfigure a or b, run
+
+```sh
+./run-{a|b}.sh
 ```
 
 ### Fig 9
@@ -309,61 +312,89 @@ Download the `fig9.zip`, decompress it, enter `fig9/` directory, and run
 ./run.sh
 ```
 
+### Fig 10
+
 Running this script requires `python3` (or you can modify it to `python` in the script), and this experiment also requires there are no other running `java` processes when the script is running.
 
 Moreover, you need `numpy` and `matplotlib` in your Python environment.
 
+Download the `fig10.zip`, decompress it, enter `fig10/` directory, and run
+
+```sh
+./run.sh
+```
+
 When the script finishes, you will get `gc-{10k,20k,50k,infinity}.png` in the `fig9/` directory depicting memory usage over time under different GC frequencies.
 
-### Fig 10
+### Fig 12
 
-Download the `fig10.zip`, decompress it and enter `fig10/` directory.
+Download the `fig12.zip`, decompress it and enter `fig12/` directory.
 
-To calculate TPS of Aion, we record the timestamp when each transaction is checked for the first time, so the `TimeKiller.jar` for this experiment is a special edition. Please use the file in the `fig10/` directory. If you want to install it yourself, uncomment `System.out.println(System.currentTimeMillis());` in the `runOnlineMode()` method in [TimeKiller.java](./src/main/java/TimeKiller.java) and [reinstall](#Install) it.
+To calculate TPS of Aion, we record the timestamp when each transaction is checked for the first time, so the `TimeKiller-fig12.jar` for this experiment is a special edition. Please use the file in the `fig12/` directory. If you want to install it yourself, delete the comment `System.out.println(System.currentTimeMillis());` in the `runOnlineMode()` method in [TimeKiller.java](./src/main/java/TimeKiller.java) and `/ 1000` in the `preGc()` method in [SEROnlineChecker.java](./src/main/java/checker/ser/SEROnlineChecker.java) (to temporarily convert 16-digit YugabyteDB timestamps into 13-digit), and then [reinstall](#Install) it.
 
 You need `json` and `requests` in your Python environment for this experiment. Also, this experiment requires a lot of memory, preferably 64GB or more.
 
-To reproduce Figure 10a, first start Aion.
+To reproduce Figure 10a (no-gc strategy), first start Aion.
 
 ```sh
-java -XX:+UseG1GC -Xmx48G -jar TimeKiller.jar --mode online --initial_value 0 --timeout_delay 10000 --use_cts_as_rtts true --txn_start_gc 200000 --max_txn_in_mem 700000 --gc_interval 20000 > aion-tps.log
+java -XX:+UseG1GC -Xmx48G -jar TimeKiller-fig12.jar --mode online --consistency_model SER  --use_cts_as_rtts true --txn_start_gc 550000 --max_txn_in_mem 550000 --gc_interval 5000 > a/no-gc.txt
 ```
 
-Then start another session, run `send_request_08ops.py` (to simulate requests of database transactions) to send requests to Aion.
+Then start another session, run `send_request_ser.py` (to simulate requests of database transactions) to send requests to Aion.
 
 ```sh
-python send_request_08ops.py 08ops.json > db-tps.log
+python3 send_request_ser.py ./a/ser-500k.txt
 ```
 
-When all requests are sent (i.e. the python script ends), you can check the TPS of database and Aion.
+When all requests are sent (i.e. the python script ends), you can check the TPS of Aion.
 
 ```sh
-python db_tps.py db-tps.log 10000
-python aion_tps.py aion-tps.log 10000
+python3 aion_tps.py ./a/no-gc.txt 5000
+```
+
+You can check the TPS multiple times util the result remains unchanged.
+
+Running Aion-SER under other two GC strategies is similar.
+
+```sh
+# checking-gc strategy
+java -XX:+UseG1GC -Xmx48G -jar TimeKiller-fig12.jar --mode online --consistency_model SER  --use_cts_as_rtts true --txn_start_gc 200000 --max_txn_in_mem 550000 --gc_interval 5000 > a/checking-gc.txt
+# start another session
+python3 send_request_ser.py ./a/ser-500k.txt
+# after the python script ends
+python3 aion_tps.py ./a/checking-gc.txt 5000
+# full-gc strategy
+java -XX:+UseG1GC -Xmx48G -jar TimeKiller-fig12.jar --mode online --consistency_model SER  --use_cts_as_rtts true --txn_start_gc 200000 --max_txn_in_mem 430000 --gc_interval 5000 > a/full-gc.txt
+# start another session
+python3 send_request_ser.py ./a/ser-500k.txt
+# after the python script ends
+python3 aion_tps.py ./a/full-gc.txt 5000
 ```
 
 The step to reproduce Figure 10b is the same as Figure 10a, except that the parameters are different.
 
-First start Aion.
-
 ```sh
-java -XX:+UseG1GC -Xmx48G -jar TimeKiller.jar --mode online --initial_value 0 --timeout_delay 10000 --use_cts_as_rtts true --txn_start_gc 10000 --max_txn_in_mem 50000 --gc_interval 10000 > aion-tps.log
+# no-gc strategy
+java -XX:+UseG1GC -Xmx48G -jar TimeKiller-fig12.jar --mode online --initial_value 0 --use_cts_as_rtts true --txn_start_gc 550000 --max_txn_in_mem 550000 --gc_interval 5000 > b/no-gc.txt
+# start another session
+python3 send_request_si.py ./b/si-500k.json
+# after the python script ends
+python3 aion_tps.py ./b/no-gc.txt 5000
+# checking-gc strategy
+java -XX:+UseG1GC -Xmx48G -jar TimeKiller-fig12.jar --mode online --initial_value 0 --use_cts_as_rtts true --txn_start_gc 200000 --max_txn_in_mem 550000 --gc_interval 5000 > b/checking-gc.txt
+# start another session
+python3 send_request_si.py ./b/si-500k.json
+# after the python script ends
+python3 aion_tps.py ./b/checking-gc.txt 5000
+# full-gc strategy
+java -XX:+UseG1GC -Xmx48G -jar TimeKiller-fig12.jar --mode online --initial_value 0 --use_cts_as_rtts true --txn_start_gc 200000 --max_txn_in_mem 450000 --gc_interval 5000 > b/full-gc.txt
+# start another session
+python3 send_request_si.py ./b/si-500k.json
+# after the python script ends
+python3 aion_tps.py ./b/full-gc.txt 5000
 ```
 
-Then run `send_request_15ops.py` to send requests.
-
-```sh
-python send_request_15ops.py 15ops.json > db-tps.log
-```
-
-When it finishes, use the two scripts to see the two throughputs.
-
-```sh
-python db_tps.py db-tps.log 60000
-python aion_tps.py aion-tps.log 60000
-```
-
-### Fig 11-14
+### Fig 13-16
 
 These experiments require a Dgraph cluster, a generator to generate transactions, a runner to connect to Dgraph and run the transactions, and a collector to collect the information of the committed transactions and send them to Aion. Actually they are necessary components to run all the experiments. For the experiments on Chronos, you can skip these procedures because you only need the json history file as the input of Chronos which is produced by the collector. But these steps cannot be skipped to experiment on Aion, which is a very cumbersome work. So here we only describe the high-level steps.
 
@@ -384,8 +415,8 @@ python collect-dgraph.py <total_txn_num> <mu> <sigma> <interval_between_txns>
 
 To reproduce each of these experiments, first start Dgraph cluster, Aion (just with default parameters) and collector, then start generator and runner until it finishes.
 
-To reproduce Figure 11, you need to monitor the memory usage of Aion when it's running.
+To reproduce Figure 13 and 14, you need to add `--log_ext_flip` to run Aion and write some scripts parsing the log to count the number of flip-flops and the time spent on rectifying the EXT violations.
 
-To reproduce Figure 12 and 13, you need to add `--log_ext_flip` to run Aion and write some scripts parsing the log to count the number of flip-flops and the time spent on rectifying the EXT violations.
+To reproduce Figure 15, you need to record the time when the runner starts and ends executing the transaction to calculate the database throughput. To run without collecting history, don't send a transaction to collector with it commits.
 
-To reproduce Figure 14, you need to record the time when the runner starts and ends executing the transaction to calculate the database throughput. To run without collecting history, don't send a transaction to collector with it commits.
+To reproduce Figure 16, you need to monitor the memory usage of Aion when it's running.
