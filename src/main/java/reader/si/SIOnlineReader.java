@@ -1,5 +1,6 @@
 package reader.si;
 
+import com.alibaba.fastjson.JSONReader;
 import history.transaction.*;
 import info.Arg;
 import com.alibaba.fastjson.JSONObject;
@@ -12,6 +13,8 @@ import violation.NOCONFLICT;
 import violation.SESSION;
 import violation.Violation;
 
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -142,6 +145,9 @@ public class SIOnlineReader implements Reader<Long, Long> {
     }
 
     private Transaction<Long, Long> createInitialTxn() {
+        if (Arg.INITIAL_TXN_PATH != null) {
+            return createInitialTxnFromFile();
+        }
         HashMap<Long, TidVal<Long>> commitFrontierTidVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
@@ -159,15 +165,69 @@ public class SIOnlineReader implements Reader<Long, Long> {
         return initialTxn;
     }
 
+    private Transaction<Long, Long> createInitialTxnFromFile() {
+        HashMap<Long, TidVal<Long>> commitFrontierTidVal = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+        int opSize = (int) maxKey + 1;
+        ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
+        HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
+        HybridLogicalClock startTimestamp = new HybridLogicalClock(0L, 0L);
+        HybridLogicalClock commitTimestamp = new HybridLogicalClock(0L, 0L);
+        Transaction<Long, Long> initialTxn = new Transaction<>("initial", "initial",
+                operations, startTimestamp, commitTimestamp);
+        initialTxn.setExtWriteKeys(extWriteKeys);
+        initialTxn.setCommitFrontierTidVal(commitFrontierTidVal);
+        operations.add(new Operation<>(OpType.write, -1L, Arg.INITIAL_VALUE_LONG));
+        try {
+            JSONReader jsonReader = new JSONReader(new FileReader(Arg.INITIAL_TXN_PATH));
+            JSONObject jsonObject = (JSONObject) jsonReader.readObject();
+            JSONArray jsonOps = jsonObject.getJSONArray("ops");
+            for (Object objOp : jsonOps) {
+                JSONObject jsonOperation = (JSONObject) objOp;
+                String type = jsonOperation.getString("t");
+                Long key = jsonOperation.getLong("k");
+                Long value = jsonOperation.getLong("v");
+                maxKey = Math.max(maxKey, key);
+                if ("w".equalsIgnoreCase(type) || "write".equalsIgnoreCase(type)) {
+                    operations.add(new Operation<>(OpType.write, key, value));
+                    extWriteKeys.put(key, value);
+                    commitFrontierTidVal.put(key, new TidVal<>("initial", value));
+                } else if ("r".equalsIgnoreCase(type) || "read".equalsIgnoreCase(type)) {
+                    operations.add(new Operation<>(OpType.read, key, value));
+                } else {
+                    throw new RuntimeException("Unknown operation type.");
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        for (long key = 0; key <= maxKey; key++) {
+            if (!extWriteKeys.containsKey(key)) {
+                operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
+                extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
+                commitFrontierTidVal.put(key, new TidVal<>("initial", Arg.INITIAL_VALUE_LONG));
+            }
+        }
+        return initialTxn;
+    }
+
     private void updateInitialTxn(long lastMaxKey, Transaction<Long, Long> initialTxn) {
         if (maxKey == lastMaxKey) {
             return;
         }
         ArrayList<Operation<Long, Long>> operations = initialTxn.getOperations();
         HashMap<Long, Long> extWriteKeys = initialTxn.getExtWriteKeys();
-        for (long key = lastMaxKey + 1; key <= maxKey; key++) {
-            operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
-            extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
+        if (Arg.INITIAL_TXN_PATH != null) {
+            HashMap<Long, TidVal<Long>> commitFrontierTidVal = initialTxn.getCommitFrontierTidVal();
+            for (long key = lastMaxKey + 1; key <= maxKey; key++) {
+                operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
+                extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
+                commitFrontierTidVal.put(key, new TidVal<>("initial", Arg.INITIAL_VALUE_LONG));
+            }
+        } else {
+            for (long key = lastMaxKey + 1; key <= maxKey; key++) {
+                operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
+                extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
+            }
         }
     }
 }

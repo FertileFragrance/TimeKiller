@@ -74,6 +74,8 @@ public class TimeKiller {
                 .desc("whether to check the SESSION axiom using timestamps [default: true]").build());
         options.addOption(Option.builder().longOpt("initial_value").hasArg(true).type(Long.class)
                 .desc("the initial value of keys before all writes [default: null]").build());
+        options.addOption(Option.builder().longOpt("initial_txn_path").hasArg(true).type(String.class)
+                .desc("the filepath of customized initial transaction").build());
         options.addOption(Option.builder().longOpt("mode").hasArg(true).type(String.class)
                 .desc("choose a mode to run TimeKiller [default: fast] [possible values: fast, gc, online]").build());
         options.addOption(Option.builder().longOpt("consistency_model").hasArg(true).type(String.class)
@@ -119,6 +121,7 @@ public class TimeKiller {
             if (Arg.INITIAL_VALUE != null && !"null".equalsIgnoreCase(Arg.INITIAL_VALUE)) {
                 Arg.INITIAL_VALUE_LONG = Long.parseLong(Arg.INITIAL_VALUE);
             }
+            Arg.INITIAL_TXN_PATH = commandLine.getOptionValue("initial_txn_path", null);
             Arg.CONSISTENCY_MODEL = commandLine.getOptionValue("consistency_model", "SI");
             if (!"SI".equals(Arg.CONSISTENCY_MODEL) && !"SER".equals(Arg.CONSISTENCY_MODEL)) {
                 System.out.println("Arg for --consistency_model is invalid");

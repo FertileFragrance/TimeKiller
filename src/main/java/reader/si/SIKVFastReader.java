@@ -103,6 +103,10 @@ public class SIKVFastReader implements Reader<Long, Long> {
     }
 
     private void createInitialTxn(long maxKey) {
+        if (Arg.INITIAL_TXN_PATH != null) {
+            createInitialTxnFromFile(maxKey);
+            return;
+        }
         keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
         int opSize = (int) maxKey + 1;
         ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
@@ -118,6 +122,52 @@ public class SIKVFastReader implements Reader<Long, Long> {
             ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
             writeToKeyTxns.add(initialTxn);
             keyWritten.put(key, writeToKeyTxns);
+        }
+    }
+
+    private void createInitialTxnFromFile(long maxKey) {
+        keyWritten = new HashMap<>((int) (maxKey * 4 / 3 + 1));
+        int opSize = (int) maxKey + 1;
+        ArrayList<Operation<Long, Long>> operations = new ArrayList<>(opSize);
+        HashMap<Long, Long> extWriteKeys = new HashMap<>(opSize * 4 / 3 + 1);
+        HybridLogicalClock startTimestamp = new HybridLogicalClock(0L, 0L);
+        HybridLogicalClock commitTimestamp = new HybridLogicalClock(0L, 0L);
+        initialTxn = new Transaction<>("initial", "initial",
+                operations, startTimestamp, commitTimestamp);
+        initialTxn.setExtWriteKeys(extWriteKeys);
+        try {
+            JSONReader jsonReader = new JSONReader(new FileReader(Arg.INITIAL_TXN_PATH));
+            JSONObject jsonObject = (JSONObject) jsonReader.readObject();
+            JSONArray jsonOps = jsonObject.getJSONArray("ops");
+            for (Object objOp : jsonOps) {
+                JSONObject jsonOperation = (JSONObject) objOp;
+                String type = jsonOperation.getString("t");
+                Long key = jsonOperation.getLong("k");
+                Long value = jsonOperation.getLong("v");
+                maxKey = Math.max(maxKey, key);
+                if ("w".equalsIgnoreCase(type) || "write".equalsIgnoreCase(type)) {
+                    operations.add(new Operation<>(OpType.write, key, value));
+                    extWriteKeys.put(key, value);
+                    ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
+                    writeToKeyTxns.add(initialTxn);
+                    keyWritten.put(key, writeToKeyTxns);
+                } else if ("r".equalsIgnoreCase(type) || "read".equalsIgnoreCase(type)) {
+                    operations.add(new Operation<>(OpType.read, key, value));
+                } else {
+                    throw new RuntimeException("Initial transaction must be write-only.");
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+        for (long key = 0; key <= maxKey; key++) {
+            if (!extWriteKeys.containsKey(key)) {
+                operations.add(new Operation<>(OpType.write, key, Arg.INITIAL_VALUE_LONG));
+                extWriteKeys.put(key, Arg.INITIAL_VALUE_LONG);
+                ArrayList<Transaction<Long, Long>> writeToKeyTxns = new ArrayList<>(129);
+                writeToKeyTxns.add(initialTxn);
+                keyWritten.put(key, writeToKeyTxns);
+            }
         }
     }
 }
