@@ -1,0 +1,26 @@
+/target
+/classes
+/checkouts
+profiles.clj
+pom.xml
+pom.xml.asc
+*.jar
+*.class
+/.lein-*
+/.nrepl-port
+/.prepl-port
+.hgignore
+.hg/
+.clj-kondo
+.lsp
+store*
+.idea
+*.iml
+.vscode
+/resources/db-config.edn
+.calva
+
+# run
+run_*.sh
+
+.DS_Store
