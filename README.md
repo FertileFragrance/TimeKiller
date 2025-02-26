@@ -77,6 +77,7 @@ usage: TimeKiller [--consistency_model <arg>] [--data_model <arg>] [--duration_i
     --gc_interval <arg>          the time interval between online gc in millisecond [default: 10000]
  -h,--help                       print usage help and exit
     --history_path <arg>         the filepath of history in json format
+    --initial_txn_path <arg>     the filepath of customized initial transaction
     --initial_value <arg>        the initial value of keys before all writes [default: null]
     --log_ext_flip               print EXT flip-flops under online mode
     --max_txn_in_mem <arg>       the max number of in-memory transactions such that online gc is called immediately regardless of the interval [default: 50000]
@@ -97,7 +98,7 @@ Set `--mode` to `fast` or `gc` to run Chronos, performing a one-shot offline che
 Under `fast` or `gc` mode:
 
 * `--history_path` is a **required** option to set the path of json-format history. The file must have `.json` extension.
-* `--consistency_model, --enable_session, --initial_value, --data_model, --fix` are valid options.
+* `--consistency_model, --enable_session, --initial_txn_path, --initial_value, --data_model, --fix` are valid options.
 
 Under `fast` mode:
 
@@ -162,7 +163,7 @@ Set `--mode` to `online` to run Aion, performing a continuous online checking by
 
 Under `online` mode:
 
-* `--consistency_model, --enable_session, --initial_value` are valid options just like Chronos.
+* `--consistency_model, --enable_session, --initial_txn_path, --initial_value` are valid options just like Chronos.
 * `--port, --timeout_delay, --log_ext_flip, --use_cts_as_rtts, --duration_in_memory, --txn_start_gc, --max_txn_in_mem, --gc_interval` are valid options **only** under `online` mode.
 * All other options will be ignored.
 
@@ -184,6 +185,7 @@ If you are confused by the numerous configuration options, don’t worry. After 
 
 * `--consistency_model`: It is the consistency model (isolation level) to check, which is SI by default. SER is also supported.
 * `--enable_session`: If set to `true` (by default), Chronos or Aion will use the `sts` and `cts` of transactions in the input history to check the SESSION axiom. Informally, SESSION indicates that a later transaction must start after the previous transactions in the same session (having the same `sid`). Otherwise, SESSION will not be checked.
+* `--initial_txn_path`: It is the path of a json file containing the initial transaction. It is used to set the initial value of keys before any operation writes on them. It is often used when different keys have different initial values.
 * `--initial_value`: It is the value read from a key before any operation writes on that key. In most cases, it is `null` (by default) or `0`, determined by the running database and the processing logic to get the history.
 
 **Chronos** options:
