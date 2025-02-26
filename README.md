@@ -217,7 +217,28 @@ The following 3 options configure how Aion GC transactions.
 
 Note that all time related options are in milliseconds.
 
-Note that the transactions in a history should be in session order. Otherwise there is no point in checking SESSION.
+Note that the transactions in a history should be in session order. Otherwise, there is no point in checking SESSION.
+
+## Run end-to-end
+
+### Step 1: Deploy a database
+
+Taking dgraph as an example, [download](https://github.com/hypermodeinc/dgraph/releases) it and execute the following commands to run it on local machine.
+
+```sh
+dgraph zero --my=localhost:5080
+dgraph alpha --my=localhost:7080 --zero=localhost:5080
+```
+
+### Step 2: Run a workload
+
+Enter the `./workloads/` directory and follow the instructions to run a workload (it may be cumbersome to set up the environment for running our default workload using dbcdc-runner).
+
+Once the workload finishes, you will get a json file containing the history of transactions (with another json file recording the initial transaction if running TPCC, RUBiS or Twitter).
+
+### Step 3: Run Chronos or Aion
+
+Run Chronos or Aion with the history file you get in the previous step. You can explore more options to customize the running.
 
 ## Reproduce
 
@@ -398,15 +419,7 @@ python3 aion_tps.py ./b/full-gc.txt 5000
 
 ### Fig 13-16
 
-These experiments require a Dgraph cluster, a generator to generate transactions, a runner to connect to Dgraph and run the transactions, and a collector to collect the information of the committed transactions and send them to Aion. Actually they are necessary components to run all the experiments. For the experiments on Chronos, you can skip these procedures because you only need the json history file as the input of Chronos which is produced by the collector. But these steps cannot be skipped to experiment on Aion, which is a very cumbersome work. So here we only describe the high-level steps.
-
-Step 1: Deploy a 3-node Dgraph cluster following its [documentation](https://dgraph.io/docs/deploy/).
-
-Step 2: Install [dbcop](https://gitlab.math.univ-paris-diderot.fr/ranadeep/dbcop) to generate workloads of transactions. You may need to do some format conversion for runner to recognize the transactions.
-
-Step 3: Implement a runner based on [Jepsen](https://github.com/jepsen-io/jepsen). You can also use Jepsen's generator instead of dbcop, which is slightly different from our workloads. Runner sends a transaction to collector when it commits by HTTP a request.
-
-Step 4: Write a collector to receive requests of committed transactions from the runner. Every time it gets 500 transactions, collector sends them to Aion in a batch.
+These experiments require a Dgraph instance, a workload generator, a runner to connect to Dgraph and run the workload, and a collector to collect the information of the committed transactions and send them to Aion. Please follow the instructions of run end-to-end first to run Dgraph and set up the environment for dbcdc-runner.
 
 We provide a collector `collect-dgraph.py` as an example which also supports injecting normally distributed delays used in Figure 13 and 14.
 
@@ -415,9 +428,11 @@ python collect-dgraph.py <total_txn_num>
 python collect-dgraph.py <total_txn_num> <mu> <sigma> <interval_between_txns>
 ```
 
-To reproduce each of these experiments, first start Dgraph cluster, Aion (just with default parameters) and collector, then start generator and runner until it finishes.
+Moreover, you need to modify the `commit-transaction-v2` function in `dgraph.clj` of the dbcdc-runner project, sending a request to the collector when a transaction commits.
 
-To reproduce Figure 13 and 14, you need to add `--log_ext_flip` to run Aion and write some scripts parsing the log to count the number of flip-flops and the time spent on rectifying the EXT violations.
+To reproduce each of these experiments, first start Dgraph instance, Aion (just with default parameters) and collector, then start generator and runner until it finishes.
+
+To reproduce Figure 13 and 14, you need to add `--log_ext_flip` to run Aion. We provide a script `count-flip.py` to parse the log and count the number of flip-flops and the time spent on rectifying the EXT violations.
 
 To reproduce Figure 15, you need to record the time when the runner starts and ends executing the transaction to calculate the database throughput. To run without collecting history, don't send a transaction to collector with it commits.
 
