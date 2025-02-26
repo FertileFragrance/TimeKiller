@@ -69,8 +69,8 @@ The whole instructions for use are as follows.
 
 ```text
 usage: TimeKiller [--consistency_model <arg>] [--data_model <arg>] [--duration_in_memory <arg>] [--enable_session <arg>] [--fix] [--gc_interval <arg>] [-h]
-       [--history_path <arg>] [--initial_value <arg>] [--log_ext_flip] [--max_txn_in_mem <arg>] [--mode <arg>] [--num_per_gc <arg>] [--port <arg>]
-       [--timeout_delay <arg>] [--txn_start_gc <arg>] [--use_cts_as_rtts <arg>]
+       [--history_path <arg>] [--initial_txn_path <arg>] [--initial_value <arg>] [--log_ext_flip] [--max_txn_in_mem <arg>] [--mode <arg>] [--num_per_gc <arg>]
+       [--port <arg>] [--timeout_delay <arg>] [--txn_start_gc <arg>] [--use_cts_as_rtts <arg>]
     --consistency_model <arg>    consistency model to check [default: SI] [possible values: SI, SER]
     --data_model <arg>           the data model of transaction operations [default: kv] [possible values: kv, list]
     --duration_in_memory <arg>   the duration transaction kept in memory in realtime in millisecond under online mode [default: 10000]
