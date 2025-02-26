@@ -296,10 +296,10 @@ To reproduce Figure 4b, run
 
 Download the `fig6.zip`, decompress it and enter `fig6/` directory.
 
-To reproduce subfigure a/b/c/d/e/f, run
+To reproduce subfigure a/b/c/d, run
 
 ```sh
-./run-{a|b|c|d|e|f}.sh
+./run-{a|b|c|d}.sh
 ```
 
 ### Fig 7
@@ -417,6 +417,32 @@ java -XX:+UseG1GC -Xmx48G -jar TimeKiller-fig12.jar --mode online --initial_valu
 python3 send_request_si.py ./b/si-500k.json
 # after the python script ends
 python3 aion_tps.py ./b/full-gc.txt 5000
+```
+
+Other two subfigures are similar to the above steps.
+
+```sh
+java -XX:+UseG1GC -Xmx55G -jar TimeKiller-fig12.jar --mode online --initial_txn_path ./rubis-init.json --use_cts_as_rtts true --txn_start_gc 550000 --max_txn_in_mem 550000 --gc_interval 5000 --consistency_model SER > c/no-gc.txt
+python3 send_request_rubis.py ./c/rubis-log.json
+python3 aion_tps.py ./c/no-gc.txt 5000
+java -XX:+UseG1GC -Xmx55G -jar TimeKiller-fig12.jar --mode online --initial_txn_path ./rubis-init.json --use_cts_as_rtts true --txn_start_gc 200000 --max_txn_in_mem 550000 --gc_interval 5000 --consistency_model SER > c/checking-gc.txt
+python3 send_request_rubis.py ./c/rubis-log.json
+python3 aion_tps.py ./c/checking-gc.txt 5000
+java -XX:+UseG1GC -Xmx55G -jar TimeKiller-fig12.jar --mode online --initial_txn_path ./rubis-init.json --use_cts_as_rtts true --txn_start_gc 200000 --max_txn_in_mem 430000 --gc_interval 5000 --consistency_model SER > c/full-gc.txt
+python3 send_request_rubis.py ./c/rubis-log.json
+python3 aion_tps.py ./c/full-gc.txt 5000
+```
+
+```sh
+java -XX:+UseG1GC -Xmx62G -jar TimeKiller-fig12.jar --mode online --initial_txn_path ./twitter-init.json --use_cts_as_rtts true --txn_start_gc 550000 --max_txn_in_mem 550000 --gc_interval 5000 --consistency_model SER > d/no-gc.txt
+python3 send_request_twitter.py ./d/twitter-log.json
+python3 aion_tps.py ./d/no-gc.txt 5000
+java -XX:+UseG1GC -Xmx62G -jar TimeKiller-fig12.jar --mode online --initial_txn_path ./twitter-init.json --use_cts_as_rtts true --txn_start_gc 250000 --max_txn_in_mem 550000 --gc_interval 5000 --consistency_model SER > d/checking-gc.txt
+python3 send_request_twitter.py ./d/twitter-log.json
+python3 aion_tps.py ./d/checking-gc.txt 5000
+java -XX:+UseG1GC -Xmx62G -jar TimeKiller-fig12.jar --mode online --initial_txn_path ./twitter-init.json --use_cts_as_rtts true --txn_start_gc 250000 --max_txn_in_mem 400000 --gc_interval 5000 --consistency_model SER > d/full-gc.txt
+python3 send_request_twitter.py ./d/twitter-log.json
+python3 aion_tps.py ./d/full-gc.txt 5000
 ```
 
 ### Fig 13-16
