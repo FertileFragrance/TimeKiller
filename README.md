@@ -1,6 +1,8 @@
 # TimeKiller (Chronos and Aion)
 a fast white-box snapshot isolation (SI) checker based on timestamps
 
+a technical report is available [here](./1420-icde2025-technical-report.pdf)
+
 ## Requirements
 
 * JDK 11 (or above)
