@@ -18,7 +18,7 @@ If you have started a Dgraph instance, you can use the following configuration:
 ```
 
 ### Step 3: Generate a workload
-Instead of using Jepsen's workload generator, we use DBCOP to generate the workload. We have modified the DBCOP generator to generate the workload in the format required by this project. Please see the [repository](https://anonymous.4open.science/r/dbcop-6369) and install it first.
+Instead of using Jepsen's workload generator, we use DBCOP to generate the workload. We have modified the DBCOP generator to generate the workload in the format required by this project. Please see the [repository](https://github.com/FertileFragrance/dbcop) and install it first.
 
 Generate a workload in the bincode format:
 ```bash

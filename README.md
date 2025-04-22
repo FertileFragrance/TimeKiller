@@ -1,7 +1,7 @@
 # TimeKiller (Chronos and Aion)
-a fast white-box snapshot isolation (SI) checker based on timestamps
+a fast white-box snapshot isolation (SI) and serializability (SER) checker based on timestamps
 
-a technical report is available [here](./1420-icde2025-technical-report.pdf)
+an extended version is available [here](https://arxiv.org/abs/2504.01477)
 
 ## Requirements
 
